@@ -120,8 +120,6 @@ class Command(BaseCommand):
                     description=f"This is a {level} course for {expertise.name.capitalize()}",
                     level=level,
                     price_per_hour=price,
-                    duration_minutes=choice([60, 120]),
-                    frequency=choice(['weekly', 'fortnightly']),
                     ProgrammingLanguage=expertise
                 )
         print("Courses seeding complete.")
