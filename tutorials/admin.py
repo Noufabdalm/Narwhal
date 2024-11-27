@@ -84,7 +84,7 @@ class LessonRequestAdmin(admin.ModelAdmin):
 @admin.register(Lesson)
 class LessonAdmin(admin.ModelAdmin):
     """Admin interface for Lesson model."""
-    list_display = ('student', 'tutor', 'course', 'session', 'term', 'request')
+    list_display = ('student', 'tutor', 'course','start_date','end_date', 'session', 'term', 'request')
     search_fields = ('student__user__username', 'tutor__user__username', 'course__name', 'term__name')
     list_filter = ('term',)
     ordering = ('term',)
