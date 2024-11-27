@@ -34,6 +34,17 @@ class Command(BaseCommand):
         Course.objects.all().delete()
         self.stdout.write(f"Deleted {Courses_count} course records.")
 
+        # Delete requests records
+        requests_count = LessonRequest.objects.count()
+        LessonRequest.objects.all().delete()
+        self.stdout.write(f"Deleted {requests_count} requests records.")
+
+        # Delete Lesson records
+        Lesson_count = Lesson.objects.count()
+        Lesson.objects.all().delete()
+        self.stdout.write(f"Deleted {Lesson_count} lesson records.")
+
+
         # Delete non-staff users
         user_count = User.objects.filter(is_staff=False).count()
         User.objects.filter(is_staff=False).delete()

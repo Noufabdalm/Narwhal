@@ -228,7 +228,6 @@ class TutorSession(models.Model):
         lessons_per_term = 12 if self.frequency == 'weekly' else 6
         return (self.duration_minutes/60.0)*self.course.price_per_hour * lessons_per_term
     
-    
     def clean(self):
         # Check for duplicate sessions
         if TutorSession.objects.filter(
@@ -256,17 +255,19 @@ class TutorSession(models.Model):
 
 class LessonRequest(models.Model):
     """Model for managing student lesson requests."""
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='lesson_requests')
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lesson_requests')
-    frequency = models.CharField(max_length=20, choices=TutorSession.FREQUENCY_CHOICES)
-    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='lesson_requests')
-    status = models.CharField(
-        max_length=20,
-        choices=[
+    STATUS_CHOICES=[
             ('pending', 'Pending'),
             ('allocated', 'Allocated'),
             ('rejected', 'Rejected'),
-        ],
+        ]
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='lesson_requests')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lesson_requests')
+    frequency = models.CharField(max_length=20, choices=TutorSession.FREQUENCY_CHOICES)
+    duration_minutes = models.PositiveIntegerField(choices=TutorSession.DURATION_CHOICES, default=60)
+    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='lesson_requests')
+    status = models.CharField(
+        max_length=20,
+        choices= STATUS_CHOICES,
         default='pending'
     )
 
@@ -281,14 +282,22 @@ class LessonRequest(models.Model):
             course=self.course,
             term=self.term,
             frequency=self.frequency,
+            duration_minutes=self.duration_minutes,
             is_booked=False
         )
+    
+    
+        
+
 
 class Lesson(models.Model):
     """Model for Booking lessons."""
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='lessons')
     tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='lessons')
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lessons')
+    start_day = models.IntegerField(choices=TutorSession.WEEKDAY_CHOICES, default=0)
+    start_date = models.DateField(null=True, blank=True) 
+    end_date = models.DateField(null=True, blank=True) 
     session = models.ForeignKey(
         TutorSession,
         on_delete=models.CASCADE,
@@ -322,6 +331,10 @@ class Lesson(models.Model):
         self.clean()
         self.session.is_booked = True
         self.session.save()
+
+        self.start_day = self.session.start_day
+        self.start_date = self.session.start_date
+        self.end_date = self.session.end_date
 
         if self.request:
             self.request.status = 'allocated'
