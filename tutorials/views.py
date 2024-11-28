@@ -8,8 +8,11 @@ from django.shortcuts import redirect, render
 from django.views import View
 from django.views.generic.edit import FormView, UpdateView
 from django.urls import reverse
-from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm
+from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm, LessonRequestForm #, StudentForm, CourseForm, TermForm, CombinedLessonRequestForm
 from tutorials.helpers import login_prohibited
+
+#not sure yet
+from .models import Student, LessonRequest, Term, TutorSession, Expertise,Lesson 
 
 
 @login_required
@@ -18,6 +21,7 @@ def dashboard(request):
 
     current_user = request.user
     return render(request, 'dashboard.html', {'user': current_user})
+    #return render(request, 'dashboard.html', {'user': current_user})
 
 
 @login_prohibited
@@ -151,3 +155,72 @@ class SignUpView(LoginProhibitedMixin, FormView):
 
     def get_success_url(self):
         return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
+    
+
+class LessonRequestView(LoginRequiredMixin, FormView): 
+    form_class = LessonRequestForm  
+    template_name = "lesson_requests.html"
+    success_url = '/dashboard/'
+
+    def request_lesson_view(request):
+        if request.method == 'POST':
+            form = LessonRequestForm(request.POST)
+            if form.is_valid():
+                # Extract the cleaned data
+                learning_level = form.cleaned_data['learning_level']
+                preferred_time = form.cleaned_data['preferred_time']
+                term = form.cleaned_data['term']
+                programming_language = form.cleaned_data['programming_language']
+                
+                # Assuming the logged-in user is a student
+                student = Student.objects.get(user=request.user)
+
+                # Create LessonRequest instance (you may add more logic as needed)
+                lesson_request = LessonRequest.objects.create(
+                    student=student,
+                    course=programming_language.courses.first(),  # Assume first course for simplicity
+                    frequency='weekly',  # Example default value
+                    term=term,
+                    status='pending'
+                )
+                
+                # Redirect or show success message
+                return redirect('dashboard')
+
+        else:
+            form = LessonRequestForm()
+
+
+#testing 
+# def combined_lesson_request_view(request):
+#     if request.method == 'POST':
+#         form = CombinedLessonRequestForm(request.POST)
+        
+#         if form.is_valid():
+#             # Get cleaned data from the form
+#             learning_level = form.cleaned_data['learning_level']
+#             course = form.cleaned_data['course']
+#             term = form.cleaned_data['term']
+#             preferred_time = form.cleaned_data['preferred_time']
+            
+#             # Find the student making the request
+#             student = Student.objects.get(user=request.user)
+
+#             # Save the data into the LessonRequest model
+#             lesson_request = LessonRequest.objects.create(
+#                 student=student,
+#                 course=course,
+#                 term=term,
+#                 frequency='weekly',  # Example default value for frequency
+#                 status='pending'  # Default status
+#             )
+            
+#             messages.success(request, "Your lesson request has been successfully submitted!")
+#             return redirect('dashboard')  # Redirect to the student's dashboard or any other relevant page
+        
+#         else:
+#             messages.error(request, "Please correct the errors below.")
+#     else:
+#         form = CombinedLessonRequestForm()
+
+#     return render(request, 'request_lesson.html', {'form': form})

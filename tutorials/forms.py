@@ -2,7 +2,7 @@
 from django import forms
 from django.contrib.auth import authenticate
 from django.core.validators import RegexValidator
-from .models import User
+from .models import User, LessonRequest, Student, TutorSession, Term, Expertise, Course
 
 class LogInForm(forms.Form):
     """Form enabling registered users to log in."""
@@ -108,3 +108,71 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
             password=self.cleaned_data.get('new_password'),
         )
         return user
+    
+
+class LessonRequestForm(forms.Form):
+    """Form to request a new lesson by specifying the preferred time, language, and type of lesson."""
+    learning_level = forms.ChoiceField(
+      choices=Student.LEARNING_LEVEL_CHOICES,
+      label="Learning Level",
+      widget= forms.Select(attrs={'class': 'form-control'})
+    )
+
+    preferred_time = forms.ChoiceField(
+        choices=TutorSession.TIME_CHOICES,
+        label="Preferred Time",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+
+    term = forms.ModelChoiceField(
+        queryset=Term.objects.all(),
+        label="Term",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+
+    programming_language = forms.ModelChoiceField(
+        queryset=Expertise.objects.all(),
+        label="Programming Language",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+
+
+# class CombinedLessonRequestForm(forms.Form):
+#     # Fields from Student model
+#     learning_level = forms.ChoiceField(
+#         choices=Student.LEARNING_LEVEL_CHOICES, 
+#         label="Learning Level"
+#     )
+    
+#     # Fields from Course model
+#     course = forms.ModelChoiceField(
+#         queryset=Course.objects.all(), 
+#         label="Course"
+#     )
+    
+#     # # Fields from Term model
+#     # term = forms.ModelChoiceField(
+#     #     queryset=Term.objects.all(), 
+#     #     label="Term"
+#     # )
+    
+#     # Additional field for preferred lesson time
+#     preferred_time = forms.DateTimeField(
+#         widget=forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+#         label="Preferred Time"
+#     )
+# #testings      ``
+# class StudentForm(forms.ModelForm):
+#     class Meta:
+#         model = Student
+#         fields = ['learning_level']
+
+# class CourseForm(forms.ModelForm):
+#     class Meta:
+#         model = Course
+#         fields = ['name']
+
+# class TermForm(forms.ModelForm):
+#     class Meta:
+#         model = Term
+#         fields = ['name']    
