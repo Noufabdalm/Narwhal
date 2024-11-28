@@ -1,0 +1,44 @@
+{% extends 'base_content.html' %}
+{% block content %}
+<div class="container mt-4">
+  <h1>Details for {{ student.user.full_name }}</h1>
+  <p><strong>Email:</strong> {{ student.user.email }}</p>
+  <p><strong>Learning Level:</strong> {{ student.learning_level|title }}</p>
+
+  <h3>Enrolled Courses</h3>
+  <ul>
+    {% for course in enrolled_courses %}
+      <li>{{ course.name }}</li>
+    {% empty %}
+      <li>No enrolled courses.</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Assigned Tutors</h3>
+  <ul>
+    {% for tutor in assigned_tutors %}
+      <li>{{ tutor.tutor__user__first_name }} {{ tutor.tutor__user__last_name }} ({{ tutor.tutor__user__email }})</li>
+    {% empty %}
+      <li>No assigned tutors.</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Lesson Requests</h3>
+  <ul>
+    {% for request in lesson_requests %}
+      <li>{{ request.course.name }} ({{ request.get_status_display }})</li>
+    {% empty %}
+      <li>No lesson requests.</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Schedule</h3>
+  <ul>
+    {% for lesson in schedule %}
+      <li>{{ lesson.course.name }}: {{ lesson.session.start_date }} at {{ lesson.session.time|date:"H:i" }}</li>
+    {% empty %}
+      <li>No scheduled lessons.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

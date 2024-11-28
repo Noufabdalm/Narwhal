@@ -1,0 +1,92 @@
+{% extends 'base_content.html' %}
+
+{% block content %}
+<div class="container">
+  <h1>Student List</h1>
+
+  <form method="get" class="mb-4">
+    <div class="row">
+      <div class="col-md-3">
+        <input
+          type="text"
+          name="search"
+          class="form-control"
+          placeholder="Search by name"
+          value="{{ request.GET.search }}">
+      </div>
+      <div class="col-md-3">
+        <select name="learning_level" class="form-select">
+          <option value="">All Levels</option>
+          <option value="beginner" {% if request.GET.learning_level == "beginner" %}selected{% endif %}>Beginner</option>
+          <option value="intermediate" {% if request.GET.learning_level == "intermediate" %}selected{% endif %}>Intermediate</option>
+          <option value="advanced" {% if request.GET.learning_level == "advanced" %}selected{% endif %}>Advanced</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <input
+          type="text"
+          name="tutor_name"
+          class="form-control"
+          placeholder="Search by tutor name"
+          value="{{ request.GET.tutor_name }}">
+      </div>
+      <div class="col-md-3">
+        <input
+          type="text"
+          name="course_name"
+          class="form-control"
+          placeholder="Search by course name"
+          value="{{ request.GET.course_name }}">
+      </div>
+      <div class="col-md-2 mt-3">
+        <button type="submit" class="btn btn-primary">Filter</button>
+      </div>
+    </div>
+  </form>
+
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Learning Level</th>
+        <th>Enrolled Courses</th>
+        <th>Assigned Tutors</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for student in students %}
+        <tr>
+          <td>{{ student.user.full_name }}</td>
+          <td>{{ student.user.email }}</td>
+          <td>{{ student.learning_level }}</td>
+          <td>
+            {% for course in student.enrolled_courses %}
+              {{ course.name }}{% if not forloop.last %}, {% endif %}
+            {% empty %}
+              None
+            {% endfor %}
+          </td>
+          <td>
+            {% for tutor in student.assigned_tutors %}
+              {{ tutor.tutor__user__first_name }} {{ tutor.tutor__user__last_name }}{% if not forloop.last %}, {% endif %}
+            {% empty %}
+              None
+            {% endfor %}
+          </td>
+          <td>
+            <a href="{% url 'student_detail' student.id %}" class="btn btn-info">View Details</a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="6" class="text-center">No students found.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+
