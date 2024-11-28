@@ -4,12 +4,13 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ImproperlyConfigured
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 from django.views import View
 from django.views.generic.edit import FormView, UpdateView
 from django.urls import reverse
 from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm
 from tutorials.helpers import login_prohibited
+from .models import Student, Lesson, LessonRequest
 
 
 @login_required
@@ -151,3 +152,49 @@ class SignUpView(LoginProhibitedMixin, FormView):
 
     def get_success_url(self):
         return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
+
+
+def student_list(request):
+    search_query = request.GET.get('search', '')
+    learning_level = request.GET.get('learning_level', '')
+    tutor_name = request.GET.get('tutor_name', '')
+    course_name = request.GET.get('course_name', '')
+
+    students = Student.objects.all()
+
+    if search_query:
+        students = students.filter(user__first_name__icontains=search_query)
+    if learning_level:
+        students = students.filter(learning_level=learning_level)
+    if tutor_name:
+        students = students.filter(lessons__tutor__user__first_name__icontains=tutor_name)
+    if course_name:
+        students = students.filter(lessons__course__name__icontains=course_name)
+
+    for student in students:
+        student.assigned_tutors = Lesson.objects.filter(student=student).values(
+            'tutor__user__first_name', 'tutor__user__last_name'
+        ).distinct()
+
+    return render(request, 'student_list.html', {'students': students})
+
+
+def student_details(request, student_id):
+    student = get_object_or_404(Student, id=student_id)
+
+    enrolled_courses = student.enrolled_courses()
+    assigned_tutors = Lesson.objects.filter(student=student).values(
+        'tutor__user__first_name', 'tutor__user__last_name', 'tutor__user__email'
+    ).distinct()
+    lesson_requests = LessonRequest.objects.filter(student=student)
+    schedule = Lesson.objects.filter(student=student).order_by('session__start_date', 'session__time')
+
+    context = {
+        'student': student,
+        'enrolled_courses': enrolled_courses,
+        'assigned_tutors': assigned_tutors,
+        'lesson_requests': lesson_requests,
+        'schedule': schedule,
+    }
+
+    return render(request, 'student_detail.html', context)
