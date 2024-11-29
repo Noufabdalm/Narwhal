@@ -162,7 +162,7 @@ class LessonRequestView(LoginRequiredMixin, FormView):
     template_name = "lesson_requests.html"
     success_url = '/dashboard/'
 
-    def request_lesson_view(request):
+    def request_lesson_view(self, request):
         if request.method == 'POST':
             form = LessonRequestForm(request.POST)
             if form.is_valid():
@@ -175,7 +175,7 @@ class LessonRequestView(LoginRequiredMixin, FormView):
                 # Assuming the logged-in user is a student
                 student = Student.objects.get(user=request.user)
 
-                # Create LessonRequest instance (you may add more logic as needed)
+                # Create LessonRequest instance
                 lesson_request = LessonRequest.objects.create(
                     student=student,
                     course=programming_language.courses.first(),  # Assume first course for simplicity
@@ -184,8 +184,17 @@ class LessonRequestView(LoginRequiredMixin, FormView):
                     status='pending'
                 )
                 
-                # Redirect or show success message
-                return redirect('dashboard')
+                # Check if the request is late
+                # lesson_request.is_late = self.check_if_late(term)
+                # lesson_request.save()
+
+                # # Inform the user if the request is late
+                # if lesson_request.is_late:
+                #     messages.warning(request, "This is a late request. Admins will prioritize it accordingly.")
+                # else:
+                #     messages.success(request, "Your lesson request has been submitted successfully!")
+
+                return redirect(self.get_success_url())
 
         else:
             form = LessonRequestForm()

@@ -219,7 +219,7 @@ class LessonRequest(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='lesson_requests')
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lesson_requests')
     frequency = models.CharField(max_length=20, choices=Course.FREQUENCY_CHOICES)
-    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='lesson_requests')
+    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='lesson_requests', default=1)
     status = models.CharField(
         max_length=20,
         choices=[
@@ -229,6 +229,9 @@ class LessonRequest(models.Model):
         ],
         default='pending'
     )
+    # might be deleted
+    #is_late = models.BooleanField(default=False)  # New field to indicate if the request is late
+
 
     def __str__(self):
         return f"Request by {self.student.user.username} for {self.course.name} ({self.term.name})"
