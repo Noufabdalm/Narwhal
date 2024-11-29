@@ -157,8 +157,6 @@ class SignUpView(LoginProhibitedMixin, FormView):
 def student_list(request):
     search_query = request.GET.get('search', '')
     learning_level = request.GET.get('learning_level', '')
-    tutor_name = request.GET.get('tutor_name', '')
-    course_name = request.GET.get('course_name', '')
 
     students = Student.objects.all()
 
@@ -166,15 +164,9 @@ def student_list(request):
         students = students.filter(user__first_name__icontains=search_query)
     if learning_level:
         students = students.filter(learning_level=learning_level)
-    if tutor_name:
-        students = students.filter(lessons__tutor__user__first_name__icontains=tutor_name)
-    if course_name:
-        students = students.filter(lessons__course__name__icontains=course_name)
 
     for student in students:
-        student.assigned_tutors = Lesson.objects.filter(student=student).values(
-            'tutor__user__first_name', 'tutor__user__last_name'
-        ).distinct()
+        student.gravatar_url = student.user.gravatar()
 
     return render(request, 'student_list.html', {'students': students})
 
