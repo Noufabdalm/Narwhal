@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand, CommandError
-from tutorials.models import User, Tutor, Student, Expertise, TutorSession
+from tutorials.models import User, Tutor, Student, Expertise, TutorSession, Lesson, LessonRequest, Course
 
 class Command(BaseCommand):
     """Build automation command to unseed the database."""
@@ -24,10 +24,26 @@ class Command(BaseCommand):
         Expertise.objects.all().delete()
         self.stdout.write(f"Deleted {expertise_count} expertise records.")
 
-         # Delete Expertise records
+         # Delete TutorSession records
         TutorSession_count = TutorSession.objects.count()
         TutorSession.objects.all().delete()
-        self.stdout.write(f"Deleted {TutorSession_count} expertise records.")
+        self.stdout.write(f"Deleted {TutorSession_count} Tutor session records.")
+
+        # Delete Courses records
+        Courses_count = Course.objects.count()
+        Course.objects.all().delete()
+        self.stdout.write(f"Deleted {Courses_count} course records.")
+
+        # Delete requests records
+        requests_count = LessonRequest.objects.count()
+        LessonRequest.objects.all().delete()
+        self.stdout.write(f"Deleted {requests_count} requests records.")
+
+        # Delete Lesson records
+        Lesson_count = Lesson.objects.count()
+        Lesson.objects.all().delete()
+        self.stdout.write(f"Deleted {Lesson_count} lesson records.")
+
 
         # Delete non-staff users
         user_count = User.objects.filter(is_staff=False).count()
