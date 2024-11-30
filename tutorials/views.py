@@ -163,42 +163,55 @@ class LessonRequestView(LoginRequiredMixin, FormView):
     template_name = "lesson_requests.html"
     success_url = '/dashboard/'
 
-    def request_lesson_view(self, request):
-        if request.method == 'POST':
-            form = LessonRequestForm(request.POST)
-            if form.is_valid():
-                # Extract the cleaned data
-                learning_level = form.cleaned_data['learning_level']
-                preferred_time = form.cleaned_data['preferred_time']
-                term = form.cleaned_data['term']
-                programming_language = form.cleaned_data['programming_language']
-                
-                # Assuming the logged-in user is a student
+    def post(self, request, *args, **kwargs):
+        form = self.form_class(request.POST)
+        if form.is_valid():
+            # Extract the cleaned data
+            term = form.cleaned_data['term']
+            programming_language = form.cleaned_data['programming_language']
+            frequency = form.cleaned_data['frequency']
+            duration_minutes = form.cleaned_data['duration_minutes']
+            #course = form.cleaned_data['course']
+
+            try:
+                # Ensure the logged-in user is a student
                 student = Student.objects.get(user=request.user)
-
-                # Create LessonRequest instance
-                lesson_request = LessonRequest.objects.create(
-                    student=student,
-                    course=programming_language.courses.first(),  # Assume first course for simplicity
-                    frequency='weekly',  # Example default value
-                    term=term,
-                    status='pending'
-                )
-                
-                # Check if the request is late
-                # lesson_request.is_late = self.check_if_late(term)
-                # lesson_request.save()
-
-                # # Inform the user if the request is late
-                # if lesson_request.is_late:
-                #     messages.warning(request, "This is a late request. Admins will prioritize it accordingly.")
-                # else:
-                #     messages.success(request, "Your lesson request has been submitted successfully!")
-
+            except Student.DoesNotExist:
+                messages.error(request, "You must be a registered student to request a lesson.")
                 return redirect(self.get_success_url())
 
-        else:
-            form = LessonRequestForm()
+            # Fetch the first course related to the selected programming language (Expertise)
+            course = programming_language.courses.first()  # Assuming the first course is used
+            #course = 
+
+            if not course:
+                messages.error(request, f"No courses are available for {programming_language.name}.")
+                return redirect(self.get_success_url())
+
+            # Create the LessonRequest instance
+            lesson_request = LessonRequest.objects.create(
+                student=student,
+                course=course,
+                frequency=frequency,
+                duration_minutes=duration_minutes,
+                term=term,
+                status='pending',
+            )
+
+            messages.success(request, "Your lesson request has been submitted successfully!")
+            return redirect(self.success_url)
+
+        # If form is not valid, re-render the form with errors
+        return render(request, self.template_name, {'form': form})
+
+    def get(self, request, *args, **kwargs):
+        """
+        Handle GET requests to display the LessonRequestForm.
+        """
+        form = self.form_class()
+        return render(request, self.template_name, {'form': form})
+
+
 
 
 #testing 
