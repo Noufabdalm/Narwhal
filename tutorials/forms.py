@@ -130,10 +130,10 @@ class LessonRequestForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-control'})
     )
 
-    programming_language = forms.ModelChoiceField(
-        queryset=Expertise.objects.all(),
-        label="Programming Language",
-        widget=forms.Select(attrs={'class': 'form-control'})
+    course = forms.ModelChoiceField(
+        queryset=Course.objects.all(),  
+        empty_label="Select a Course",
+        widget=forms.Select(attrs={'class': 'form-control'})  
     )
 
 

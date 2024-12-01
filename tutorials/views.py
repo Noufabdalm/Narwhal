@@ -10,6 +10,8 @@ from django.views.generic.edit import FormView, UpdateView
 from django.urls import reverse
 from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm, LessonRequestForm #, StudentForm, CourseForm, TermForm, CombinedLessonRequestForm
 from tutorials.helpers import login_prohibited
+from django.utils import timezone
+from datetime import timedelta
 
 #not sure yet
 from .models import Student, LessonRequest, Term, TutorSession, Expertise,Lesson 
@@ -168,10 +170,9 @@ class LessonRequestView(LoginRequiredMixin, FormView):
         if form.is_valid():
             # Extract the cleaned data
             term = form.cleaned_data['term']
-            programming_language = form.cleaned_data['programming_language']
+            course = form.cleaned_data['course']
             frequency = form.cleaned_data['frequency']
             duration_minutes = form.cleaned_data['duration_minutes']
-            #course = form.cleaned_data['course']
 
             try:
                 # Ensure the logged-in user is a student
@@ -179,14 +180,10 @@ class LessonRequestView(LoginRequiredMixin, FormView):
             except Student.DoesNotExist:
                 messages.error(request, "You must be a registered student to request a lesson.")
                 return redirect(self.get_success_url())
-
-            # Fetch the first course related to the selected programming language (Expertise)
-            course = programming_language.courses.first()  # Assuming the first course is used
-            #course = 
-
-            if not course:
-                messages.error(request, f"No courses are available for {programming_language.name}.")
-                return redirect(self.get_success_url())
+            
+            # Check if the request is late
+            # two_weeks_before = term.start_date - timedelta(weeks=2)
+            # is_late = timezone.now().date() > two_weeks_before
 
             # Create the LessonRequest instance
             lesson_request = LessonRequest.objects.create(
@@ -197,6 +194,11 @@ class LessonRequestView(LoginRequiredMixin, FormView):
                 term=term,
                 status='pending',
             )
+
+            # Set a warning message if the request is late
+            # if is_late:
+            #     messages.warning(request, "Warning: This request was submitted late and may not be prioritized.")
+
 
             messages.success(request, "Your lesson request has been submitted successfully!")
             return redirect(self.success_url)
