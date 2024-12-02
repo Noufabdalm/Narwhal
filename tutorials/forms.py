@@ -137,6 +137,36 @@ class LessonRequestForm(forms.Form):
     )
 
 
+"""LESSON BOOKING FORMS START"""
+
+class StudentSelectionForm(forms.Form):
+    student = forms.ModelChoiceField(
+        queryset=Student.objects.all(),
+        label="Select a Student",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        required=True,
+    )
+
+
+class RequestSelectionForm(forms.Form):
+    request = forms.ModelChoiceField(
+        queryset=LessonRequest.objects.none(),  # Queryset populated dynamically
+        label="Select a Request",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        required=True,
+    )
+
+
+class SessionSelectionForm(forms.Form):
+    session = forms.ModelChoiceField(
+        queryset=TutorSession.objects.none(),  # Queryset populated dynamically
+        label="Select a Session",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        required=True,
+    )
+
+"""LESSON BOOKING FORMS END"""
+
 # class CombinedLessonRequestForm(forms.Form):
 #     # Fields from Student model
 #     learning_level = forms.ChoiceField(

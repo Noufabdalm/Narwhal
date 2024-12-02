@@ -270,12 +270,22 @@ class LessonRequest(models.Model):
         choices= STATUS_CHOICES,
         default='pending'
     )
-    # might be deleted
-    #is_late = models.BooleanField(default=False)  # New field to indicate if the request is late
+    # Flag to determine if the request is late or not
+    is_late = models.BooleanField(default=False)  
+    
 
 
     def __str__(self):
         return f"Request by {self.student.user.username} for {self.course.name} ({self.term.name})"
+
+    def check_and_mark_late(self):
+        """
+        Checks if the request is late based on the term start date and marks it as late if applicable.
+        """
+        days_until_term_starts = (self.term.start_date - now().date()).days
+        if days_until_term_starts < 14:
+            self.is_late = True
+            #self.save()
 
     def get_available_tutor_sessions(self):
         """
@@ -288,6 +298,13 @@ class LessonRequest(models.Model):
             duration_minutes=self.duration_minutes,
             is_booked=False
         )
+    
+    def save(self, *args, **kwargs):
+        """
+        Override the save method to check if the request is late before saving.
+        """
+        #self.check_and_mark_late()
+        super().save(*args, **kwargs)
     
     
         

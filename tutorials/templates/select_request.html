@@ -1,0 +1,12 @@
+{% extends 'base_content.html' %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Select Lesson Request</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Next</button>
+        <a href="{% url 'select_student' %}" class="btn btn-secondary">Previous</a>
+    </form>
+</div>
+{% endblock %}
