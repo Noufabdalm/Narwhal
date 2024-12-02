@@ -259,7 +259,7 @@ def student_details(request, student_id):
 
     return render(request, 'student_detail.html', context)
 
-#test
+
 @login_required
 def student_lesson_requests(request):
     """View to display all lesson requests submitted by the logged-in student."""
