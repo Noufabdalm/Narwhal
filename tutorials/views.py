@@ -12,6 +12,8 @@ from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm, Lesso
 from tutorials.helpers import login_prohibited
 from django.utils import timezone
 from datetime import timedelta
+#not sure yet 
+from django.contrib.admin.views.decorators import staff_member_required
 
 #not sure yet
 from .models import Student, LessonRequest, Term, TutorSession, Expertise,Lesson 
@@ -171,8 +173,8 @@ class LessonRequestView(LoginRequiredMixin, FormView):
             # Extract the cleaned data
             term = form.cleaned_data['term']
             course = form.cleaned_data['course']
+            preferred_time = form.cleaned_data['preferred_time']
             frequency = form.cleaned_data['frequency']
-            duration_minutes = form.cleaned_data['duration_minutes']
 
             try:
                 # Ensure the logged-in user is a student
@@ -182,22 +184,20 @@ class LessonRequestView(LoginRequiredMixin, FormView):
                 return redirect(self.get_success_url())
             
             # Check if the request is late
-            # two_weeks_before = term.start_date - timedelta(weeks=2)
-            # is_late = timezone.now().date() > two_weeks_before
+            two_weeks_before = term.start_date - timedelta(weeks=2)
+            is_late = timezone.now().date() > two_weeks_before
 
             # Create the LessonRequest instance
             lesson_request = LessonRequest.objects.create(
-                student=student,
-                course=course,
                 frequency=frequency,
-                duration_minutes=duration_minutes,
+                course=course,
                 term=term,
                 status='pending',
             )
 
             # Set a warning message if the request is late
-            # if is_late:
-            #     messages.warning(request, "Warning: This request was submitted late and may not be prioritized.")
+            if is_late:
+                messages.warning(request, "Warning: This request was submitted late and may not be prioritized.")
 
 
             messages.success(request, "Your lesson request has been submitted successfully!")
@@ -213,6 +213,13 @@ class LessonRequestView(LoginRequiredMixin, FormView):
         form = self.form_class()
         return render(request, self.template_name, {'form': form})
 
+
+
+@staff_member_required
+def late_requests_view(request):
+    """View to display all late lesson requests."""
+    late_requests = LessonRequest.objects.filter(is_late=True, status='pending')
+    return render(request, 'late_requests.html', {'late_requests': late_requests})
 
 
 

@@ -112,10 +112,22 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
 
 class LessonRequestForm(forms.Form):
     """Form to request a new lesson by specifying the preferred time, language, and type of lesson."""
-    learning_level = forms.ChoiceField(
-      choices=Student.LEARNING_LEVEL_CHOICES,
-      label="Learning Level",
-      widget= forms.Select(attrs={'class': 'form-control'})
+    course = forms.ModelChoiceField(
+        queryset=Course.objects.all(),  
+        empty_label="Select a Course",
+        widget=forms.Select(attrs={'class': 'form-control'})  
+    )
+
+    frequency = forms.ChoiceField(
+        choices=TutorSession.FREQUENCY_CHOICES,
+        label="Frequency",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    term = forms.ModelChoiceField(
+        queryset=Term.objects.all(),
+        label="Term",
+        widget=forms.Select(attrs={'class': 'form-control'})
     )
 
     preferred_time = forms.ChoiceField(
@@ -124,17 +136,7 @@ class LessonRequestForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-control'})
     )
 
-    term = forms.ModelChoiceField(
-        queryset=Term.objects.all(),
-        label="Term",
-        widget=forms.Select(attrs={'class': 'form-control'})
-    )
 
-    course = forms.ModelChoiceField(
-        queryset=Course.objects.all(),  
-        empty_label="Select a Course",
-        widget=forms.Select(attrs={'class': 'form-control'})  
-    )
 
 
 # class CombinedLessonRequestForm(forms.Form):
