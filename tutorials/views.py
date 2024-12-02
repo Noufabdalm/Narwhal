@@ -26,7 +26,6 @@ def dashboard(request):
 
     current_user = request.user
     return render(request, 'dashboard.html', {'user': current_user})
-    #return render(request, 'dashboard.html', {'user': current_user})
 
 
 @login_prohibited
@@ -189,6 +188,7 @@ class LessonRequestView(LoginRequiredMixin, FormView):
 
             # Create the LessonRequest instance
             lesson_request = LessonRequest.objects.create(
+                student=student,
                 frequency=frequency,
                 course=course,
                 term=term,
@@ -196,8 +196,8 @@ class LessonRequestView(LoginRequiredMixin, FormView):
             )
 
             # Set a warning message if the request is late
-            if is_late:
-                messages.warning(request, "Warning: This request was submitted late and may not be prioritized.")
+            # if is_late:
+            #     messages.warning(request, "Warning: This request was submitted late and may not be prioritized.")
 
 
             messages.success(request, "Your lesson request has been submitted successfully!")
@@ -215,47 +215,11 @@ class LessonRequestView(LoginRequiredMixin, FormView):
 
 
 
-@staff_member_required
-def late_requests_view(request):
-    """View to display all late lesson requests."""
-    late_requests = LessonRequest.objects.filter(is_late=True, status='pending')
-    return render(request, 'late_requests.html', {'late_requests': late_requests})
-
-
-
-#testing 
-# def combined_lesson_request_view(request):
-#     if request.method == 'POST':
-#         form = CombinedLessonRequestForm(request.POST)
-        
-#         if form.is_valid():
-#             # Get cleaned data from the form
-#             learning_level = form.cleaned_data['learning_level']
-#             course = form.cleaned_data['course']
-#             term = form.cleaned_data['term']
-#             preferred_time = form.cleaned_data['preferred_time']
-            
-#             # Find the student making the request
-#             student = Student.objects.get(user=request.user)
-
-#             # Save the data into the LessonRequest model
-#             lesson_request = LessonRequest.objects.create(
-#                 student=student,
-#                 course=course,
-#                 term=term,
-#                 frequency='weekly',  # Example default value for frequency
-#                 status='pending'  # Default status
-#             )
-            
-#             messages.success(request, "Your lesson request has been successfully submitted!")
-#             return redirect('dashboard')  # Redirect to the student's dashboard or any other relevant page
-        
-#         else:
-#             messages.error(request, "Please correct the errors below.")
-#     else:
-#         form = CombinedLessonRequestForm()
-
-#     return render(request, 'request_lesson.html', {'form': form})
+# @staff_member_required
+# def late_requests_view(request):
+#     """View to display all late lesson requests."""
+#     late_requests = LessonRequest.objects.filter(is_late=True, status='pending')
+#     return render(request, 'late_requests.html', {'late_requests': late_requests})
 
 
 def student_list(request):
@@ -294,3 +258,15 @@ def student_details(request, student_id):
     }
 
     return render(request, 'student_detail.html', context)
+
+
+@login_required
+def student_lesson_requests(request):
+    """View to display all lesson requests submitted by the logged-in student."""
+    try:
+        student = request.user.student_profile
+    except AttributeError:
+        return render(request, 'error.html', {'message': 'You must be a student to view this page.'})
+
+    lesson_requests = LessonRequest.objects.filter(student=student).order_by('-id')
+    return render(request, 'request_list.html', {'lesson_requests': lesson_requests})

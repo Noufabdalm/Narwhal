@@ -270,8 +270,6 @@ class LessonRequest(models.Model):
         choices= STATUS_CHOICES,
         default='pending'
     )
-    # might be deleted
-    is_late = models.BooleanField(default=False)  # New field to indicate if the request is late
 
 
     def __str__(self):
@@ -288,14 +286,6 @@ class LessonRequest(models.Model):
             duration_minutes=self.duration_minutes,
             is_booked=False
         )
-    
-
-    def save(self, *args, **kwargs):
-        # Define the criteria for a late request
-        late_deadline = self.term.start_date - timedelta(days=7)  # Example: Consider requests late if made within a week of the term start
-        if self.request_date.date() > late_deadline:
-            self.is_late = True
-        super().save(*args, **kwargs)
     
     
         

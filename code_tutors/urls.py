@@ -32,5 +32,6 @@ urlpatterns = [
     path('lesson_requests/', views.LessonRequestView.as_view(), name='lesson_requests'),
     path('students/', views.student_list, name='student_list'),
     path('students/<int:student_id>/', views.student_details, name='student_detail'),
+    path('request_list/', views.student_lesson_requests, name='request_list'),
 ]
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
