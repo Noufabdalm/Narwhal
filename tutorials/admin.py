@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     User, Admin, Student, Expertise, Tutor,
-    Course, Term, TutorSession, LessonRequest, Lesson
+    Course, Term, TutorSession, LessonRequest, Lesson,Invoice
 )
 
 @admin.register(User)
@@ -88,3 +88,19 @@ class LessonAdmin(admin.ModelAdmin):
     search_fields = ('student__user__username', 'tutor__user__username', 'course__name', 'term__name')
     list_filter = ('term',)
     ordering = ('term',)
+
+@admin.register(Invoice)
+class InvoiceAdmin(admin.ModelAdmin):
+    list_display = ('student', 'lesson', 'total_amount', 'due_date', 'status')
+    list_filter = ('status', 'due_date')
+    search_fields = ('student__user__username', 'lesson__course__name')
+    readonly_fields = ('total_amount', 'due_date')  # Make calculated fields readonly in admin
+    fieldsets = (
+        (None, {
+            'fields': ('student', 'lesson', 'status')
+        }),
+        ('Calculated Fields', {
+            'fields': ('total_amount', 'due_date'),
+        }),
+    )
+

@@ -15,7 +15,7 @@ from django.utils import timezone
 from datetime import timedelta
 
 #not sure yet
-from .models import Student, LessonRequest, Term, TutorSession, Expertise,Lesson 
+from .models import Student, LessonRequest, Term, TutorSession, Expertise,Lesson, Invoice 
 #from .models import Student, Lesson, LessonRequest
 
 
@@ -293,8 +293,20 @@ class ConfirmLessonBookingView(FormView):
                 f"{tutor_session.course.name} - {tutor_session.tutor.user.get_full_name()} "
                 f"on {tutor_session.start_date}"
             )
+            context['due_date'] = tutor_session.start_date  #Assuming start_date is the due dat
+
+        # Add calculated invoice amount to the context
+        context['invoice_amount'] = self.calculate_invoice_amount()
 
         return context
+
+    def calculate_invoice_amount(self):
+        """Helper method to calculate the invoice amount."""
+        session_id = self.request.session.get('session_id')
+        if session_id:
+            tutor_session = TutorSession.objects.get(id=session_id)
+            return tutor_session.calculate_term_cost()  # Assuming `calculate_term_cost` is defined in TutorSession
+        return 0
 
     def form_valid(self, form):
         student_id = self.request.session.get('student_id')
@@ -311,7 +323,7 @@ class ConfirmLessonBookingView(FormView):
         session = TutorSession.objects.get(id=session_id)
 
         # Create the lesson
-        Lesson.objects.create(
+        booked_lesson = Lesson.objects.create(
             student=student,
             tutor=session.tutor,
             course=session.course,
@@ -324,14 +336,23 @@ class ConfirmLessonBookingView(FormView):
             rollover=True,
         )
 
+        # Create the Invoice
+        invoice = Invoice.objects.create(
+            student=student,
+            lesson=booked_lesson,
+            total_amount=self.calculate_invoice_amount(),
+            due_date=session.start_date,
+        )
+
         # Update related models
         session.is_booked = True
         session.save()
         lesson_request.status = 'allocated'
         lesson_request.save()
 
-        messages.success(self.request, "Lesson successfully booked.")
+        messages.success(self.request, f"Lesson successfully booked. Invoice amount: ${invoice.total_amount:.2f}")
         return redirect(reverse("dashboard"))
+
 
     
 """LESSON BOOKING VIEWS END"""

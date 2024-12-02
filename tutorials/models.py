@@ -5,6 +5,7 @@ from libgravatar import Gravatar
 from django.utils.timezone import now
 from datetime import time, timedelta
 from django.core.exceptions import ValidationError
+from decimal import Decimal
 
 class User(AbstractUser):
     """Model used for user authentication, and team member related information."""
@@ -226,7 +227,14 @@ class TutorSession(models.Model):
 
     def calculate_term_cost(self):
         lessons_per_term = 12 if self.frequency == 'weekly' else 6
-        return (self.duration_minutes/60.0)*self.course.price_per_hour * lessons_per_term
+        # Convert all components to Decimal
+        duration_in_hours = Decimal(self.duration_minutes) / Decimal(60)  # Convert minutes to hours as Decimal
+        price_per_hour = Decimal(self.course.price_per_hour)  # Ensure course price per hour is a Decimal
+        lessons = Decimal(lessons_per_term)  # Convert lessons_per_term to Decimal
+
+        # Perform the calculation
+        total_cost = duration_in_hours * price_per_hour * lessons
+        return total_cost
     
     def clean(self):
         # Check for duplicate sessions
@@ -363,13 +371,11 @@ class Lesson(models.Model):
         super().save(*args, **kwargs)
 
 
-
-"""
 class Invoice(models.Model):
-    
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='invoices')
-    total_amount = models.DecimalField(max_digits=7, decimal_places=2)
-    due_date = models.DateField()
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='invoice')
+    total_amount = models.DecimalField(max_digits=7, decimal_places=2, blank=True, null = True)
+    due_date = models.DateField(blank=True, null = True)
     status = models.CharField(
         max_length=20,
         choices=[
@@ -378,18 +384,14 @@ class Invoice(models.Model):
         ],
         default='unpaid'
     )
-    date_created = models.DateTimeField(auto_now_add=True)
-
-    def calculate_total(self):
-      
-        total_cost = sum(
-            lesson.session.course.price_per_hour * (lesson.session.course.duration_minutes / 60)
-            for lesson in self.lessons.all()
-        )
-        self.total_amount = total_cost
-        self.save()
-        return self.total_amount
-
+  
     def __str__(self):
         return f"Invoice for {self.student.user.username} ({self.status})"
-"""
+    
+    def save(self, *args, **kwargs):
+     """
+     Ensure session gets marked as booked and the request status updated to 'allocated'.
+     """
+     super().save(*args, **kwargs)
+
+

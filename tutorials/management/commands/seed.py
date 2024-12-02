@@ -17,9 +17,9 @@ expertises = [
 ]
 
 class Command(BaseCommand):
-    USER_COUNT = 300
-    TUTOR_COUNT = 150
-    STUDENT_COUNT = 150
+    USER_COUNT = 30
+    TUTOR_COUNT = 15
+    STUDENT_COUNT = 15
     DEFAULT_PASSWORD = 'Password123'
     help = 'Seeds the database with sample data'
 
