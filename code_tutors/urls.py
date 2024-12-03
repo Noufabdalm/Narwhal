@@ -33,5 +33,9 @@ urlpatterns = [
     path('students/<int:student_id>/', views.student_details, name='student_detail'),
     path('tutors/', views.tutor_list, name='tutor_list'),
     path('tutors/<int:tutor_id>/', views.tutor_detail, name='tutor_detail'),
+    path('courses/', views.course_list, name='course_list'),
+    path('courses/add/', views.course_add, name='course_add'),
+    path('courses/<int:course_id>/edit/', views.course_edit, name='course_edit'),
+    path('courses/<int:course_id>/delete/', views.delete_course, name='course_delete'),
 ]
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

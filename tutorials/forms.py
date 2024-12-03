@@ -2,7 +2,7 @@
 from django import forms
 from django.contrib.auth import authenticate
 from django.core.validators import RegexValidator
-from .models import User
+from .models import User, Course
 
 class LogInForm(forms.Form):
     """Form enabling registered users to log in."""
@@ -108,3 +108,9 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
             password=self.cleaned_data.get('new_password'),
         )
         return user
+
+
+class CourseForm(forms.ModelForm):
+    class Meta:
+        model = Course
+        fields = ['name', 'description', 'level', 'price_per_hour', 'ProgrammingLanguage']
