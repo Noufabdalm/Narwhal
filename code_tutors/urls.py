@@ -37,5 +37,9 @@ urlpatterns = [
     path('courses/add/', views.course_add, name='course_add'),
     path('courses/<int:course_id>/edit/', views.course_edit, name='course_edit'),
     path('courses/<int:course_id>/delete/', views.delete_course, name='course_delete'),
+    path('expertise/', views.expertise_list, name='expertise_list'),
+    path('expertise/add/', views.expertise_add, name='expertise_add'),
+    path('expertise/<int:expertise_id>/edit/', views.expertise_edit, name='expertise_edit'),
+    path('expertise/<int:expertise_id>/delete/', views.expertise_delete, name='expertise_delete'),
 ]
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

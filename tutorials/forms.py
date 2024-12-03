@@ -2,7 +2,7 @@
 from django import forms
 from django.contrib.auth import authenticate
 from django.core.validators import RegexValidator
-from .models import User, Course
+from .models import User, Course, Expertise
 
 class LogInForm(forms.Form):
     """Form enabling registered users to log in."""
@@ -114,3 +114,11 @@ class CourseForm(forms.ModelForm):
     class Meta:
         model = Course
         fields = ['name', 'description', 'level', 'price_per_hour', 'ProgrammingLanguage']
+
+class ExpertiseForm(forms.ModelForm):
+    class Meta:
+        model = Expertise
+        fields = ['name']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter expertise name'}),
+        }

@@ -1,0 +1,38 @@
+{% extends 'base_content.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h1>Expertise List</h1>
+
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+        <form method="get" class="d-flex gap-2 flex-grow-1">
+            <input type="text" name="search" placeholder="Search by expertise name" value="{{ request.GET.search }}" class="form-control form-control-sm">
+            <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        </form>
+
+        <a href="{% url 'expertise_add' %}" class="btn btn-success btn-sm ms-2 flex-shrink-0">Add Expertise</a>
+    </div>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for expertise in expertise %}
+            <tr>
+                <td>{{ expertise.name }}</td>
+                <td>
+                    <a href="{% url 'expertise_edit' expertise.id %}" class="btn btn-secondary btn-sm">Edit</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="2">No expertise found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
