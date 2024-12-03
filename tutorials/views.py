@@ -11,7 +11,7 @@ from django.urls import reverse
 from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm
 from tutorials.helpers import login_prohibited
 from .models import Student, Lesson, LessonRequest, Tutor, TutorSession, Course, Expertise
-from .forms import CourseForm
+from .forms import CourseForm, ExpertiseForm
 
 
 @login_required
@@ -271,3 +271,52 @@ def delete_course(request, course_id):
         return redirect('course_list')
 
     return render(request, 'course_delete.html', {'course': course})
+
+
+def expertise_list(request):
+    search_query = request.GET.get('search', '')
+
+    expertise = Expertise.objects.all()
+    if search_query:
+        expertise = expertise.filter(name__icontains=search_query)
+
+    return render(request, 'expertise_list.html', {
+        'expertise': expertise,
+    })
+
+def expertise_add(request):
+    if request.method == 'POST':
+        form = ExpertiseForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "New expertise added successfully!")
+            return redirect('expertise_list')
+    else:
+        form = ExpertiseForm()
+
+    return render(request, 'expertise_add.html', {'form': form})
+
+def expertise_edit(request, expertise_id):
+    expertise = get_object_or_404(Expertise, id=expertise_id)
+
+    if request.method == 'POST':
+        form = ExpertiseForm(request.POST, instance=expertise)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Expertise updated successfully!")
+            return redirect('expertise_list')
+    else:
+        form = ExpertiseForm(instance=expertise)
+
+    return render(request, 'expertise_edit.html', {'form': form, 'expertise': expertise})
+
+def expertise_delete(request, expertise_id):
+    expertise = get_object_or_404(Expertise, id=expertise_id)
+
+    if request.method == 'POST':
+        expertise_name = expertise.name
+        expertise.delete()
+        messages.success(request, f"'{expertise_name}' has been deleted.")
+        return redirect('expertise_list')
+
+    return render(request, 'expertise_delete.html', {'expertise': expertise})
