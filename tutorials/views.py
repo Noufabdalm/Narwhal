@@ -10,7 +10,8 @@ from django.views.generic.edit import FormView, UpdateView
 from django.urls import reverse
 from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm
 from tutorials.helpers import login_prohibited
-from .models import Student, Lesson, LessonRequest, Tutor, TutorSession
+from .models import Student, Lesson, LessonRequest, Tutor, TutorSession, Course, Expertise
+from .forms import CourseForm
 
 
 @login_required
@@ -216,3 +217,57 @@ def tutor_detail(request, tutor_id):
         'booked_sessions': booked_sessions,
         'booked_lessons': booked_lessons,
     })
+
+
+def course_list(request):
+    search_query = request.GET.get('search', '')
+    expertise_filter = request.GET.get('expertise', '')
+
+    courses = Course.objects.all()
+
+    if search_query:
+        courses = courses.filter(name__icontains=search_query)
+
+    if expertise_filter:
+        courses = courses.filter(ProgrammingLanguage__name__iexact=expertise_filter)
+
+    return render(request, 'course_list.html', {
+        'courses': courses,
+        'expertise': Expertise.objects.all()
+    })
+
+def course_add(request):
+    if request.method == 'POST':
+        form = CourseForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('course_list')
+    else:
+        form = CourseForm()
+
+    return render(request, 'course_add.html', {'form': form})
+
+
+def course_edit(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+
+    if request.method == 'POST':
+        form = CourseForm(request.POST, instance=course)
+        if form.is_valid():
+            form.save()
+            return redirect('course_list')
+    else:
+        form = CourseForm(instance=course)
+
+    return render(request, 'course_edit.html', {'form': form, 'course': course})
+
+def delete_course(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+
+    if request.method == 'POST':
+        course_name = course.name
+        course.delete()
+        messages.success(request, f"The course '{course_name}' has been successfully deleted.")
+        return redirect('course_list')
+
+    return render(request, 'course_delete.html', {'course': course})

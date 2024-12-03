@@ -1,0 +1,59 @@
+{% extends 'base_content.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Edit Course</h1>
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label for="id_name" class="form-label">Name:</label>
+                <input type="text" name="name" id="id_name" class="form-control" value="{{ form.initial.name }}" placeholder="Enter course name">
+            </div>
+            <div class="col-md-6">
+                <label for="id_price_per_hour" class="form-label">Price per hour:</label>
+                <select name="price_per_hour" id="id_price_per_hour" class="form-select">
+                    <option value="">Select price</option>
+                    {% for value, label in form.fields.price_per_hour.choices %}
+                    <option value="{{ value }}" {% if form.initial.price_per_hour == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="row g-3 mt-3">
+            <div class="col-md-6">
+                <label for="id_level" class="form-label">Level:</label>
+                <select name="level" id="id_level" class="form-select">
+                    <option value="">Select level</option>
+                    {% for value, label in form.fields.level.choices %}
+                    <option value="{{ value }}" {% if form.initial.level == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label for="id_ProgrammingLanguage" class="form-label">Programming Language:</label>
+                <select name="ProgrammingLanguage" id="id_ProgrammingLanguage" class="form-select">
+                    <option value="">Select language</option>
+                    {% for value, label in form.fields.ProgrammingLanguage.choices %}
+                    <option value="{{ value }}" {% if form.initial.ProgrammingLanguage == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="mt-3">
+            <label for="id_description" class="form-label">Description:</label>
+            <textarea name="description" id="id_description" class="form-control" rows="4" placeholder="Enter course description">{{ form.initial.description }}</textarea>
+        </div>
+        <div class="mt-4 text-end">
+             <a href="{% url 'course_delete' course.id %}" class="btn btn-danger">Delete Course</a>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+
+    </form>
+</div>
+{% endblock %}
