@@ -10,7 +10,7 @@ from django.views.generic.edit import FormView, UpdateView
 from django.urls import reverse
 from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm
 from tutorials.helpers import login_prohibited
-from .models import Student, Lesson, LessonRequest
+from .models import Student, Lesson, LessonRequest, Tutor, TutorSession
 
 
 @login_required
@@ -190,3 +190,29 @@ def student_details(request, student_id):
     }
 
     return render(request, 'student_detail.html', context)
+
+
+def tutor_list(request):
+    search_query = request.GET.get('search', '').strip()
+
+    tutors = Tutor.objects.all()
+
+    if search_query:
+        tutors = tutors.filter(user__first_name__icontains=search_query)
+
+    return render(request, 'tutor_list.html', {'tutors': tutors.distinct()})
+
+def tutor_detail(request, tutor_id):
+    tutor = get_object_or_404(Tutor, id=tutor_id)
+    expertise = tutor.expertise.all()
+    available_sessions = TutorSession.objects.filter(tutor=tutor, is_booked=False)
+    booked_sessions = TutorSession.objects.filter(tutor=tutor, is_booked=True)
+    booked_lessons = Lesson.objects.filter(tutor=tutor).select_related('student__user', 'course')
+
+    return render(request, 'tutor_detail.html', {
+        'tutor': tutor,
+        'expertise': expertise,
+        'available_sessions': available_sessions,
+        'booked_sessions': booked_sessions,
+        'booked_lessons': booked_lessons,
+    })
