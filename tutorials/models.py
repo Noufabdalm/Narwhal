@@ -4,8 +4,10 @@ from django.db import models
 from libgravatar import Gravatar
 from django.utils.timezone import now
 from datetime import time, timedelta
+import datetime
 from django.core.exceptions import ValidationError
 from decimal import Decimal
+
 
 class User(AbstractUser):
     """Model used for user authentication, and team member related information."""
@@ -279,7 +281,8 @@ class LessonRequest(models.Model):
         default='pending'
     )
     # Flag to determine if the request is late or not
-    is_late = models.BooleanField(default=False)  
+    is_late = models.BooleanField(default=False)
+    requested_date = models.DateField(default=datetime.date.today)
     
 
 
@@ -293,7 +296,7 @@ class LessonRequest(models.Model):
         days_until_term_starts = (self.term.start_date - now().date()).days
         if days_until_term_starts < 14:
             self.is_late = True
-            #self.save()
+        
 
     def get_available_tutor_sessions(self):
         """
@@ -311,7 +314,7 @@ class LessonRequest(models.Model):
         """
         Override the save method to check if the request is late before saving.
         """
-        #self.check_and_mark_late()
+        self.check_and_mark_late()
         super().save(*args, **kwargs)
     
     
