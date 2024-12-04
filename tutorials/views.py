@@ -17,7 +17,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 
 #not sure yet
 from .models import Student, LessonRequest, Term, TutorSession, Expertise,Lesson 
-#from .models import Student, Lesson, LessonRequest
+from .forms import CourseForm, ExpertiseForm
 
 
 @login_required
@@ -258,6 +258,135 @@ def student_details(request, student_id):
     }
 
     return render(request, 'student_detail.html', context)
+
+
+def tutor_list(request):
+    search_query = request.GET.get('search', '').strip()
+
+    tutors = Tutor.objects.all()
+
+    if search_query:
+        tutors = tutors.filter(user__first_name__icontains=search_query)
+
+    return render(request, 'tutor_list.html', {'tutors': tutors.distinct()})
+
+def tutor_detail(request, tutor_id):
+    tutor = get_object_or_404(Tutor, id=tutor_id)
+    expertise = tutor.expertise.all()
+    available_sessions = TutorSession.objects.filter(tutor=tutor, is_booked=False)
+    booked_sessions = TutorSession.objects.filter(tutor=tutor, is_booked=True)
+    booked_lessons = Lesson.objects.filter(tutor=tutor).select_related('student__user', 'course')
+
+    return render(request, 'tutor_detail.html', {
+        'tutor': tutor,
+        'expertise': expertise,
+        'available_sessions': available_sessions,
+        'booked_sessions': booked_sessions,
+        'booked_lessons': booked_lessons,
+    })
+
+
+def course_list(request):
+    search_query = request.GET.get('search', '')
+    expertise_filter = request.GET.get('expertise', '')
+
+    courses = Course.objects.all()
+
+    if search_query:
+        courses = courses.filter(name__icontains=search_query)
+
+    if expertise_filter:
+        courses = courses.filter(ProgrammingLanguage__name__iexact=expertise_filter)
+
+    return render(request, 'course_list.html', {
+        'courses': courses,
+        'expertise': Expertise.objects.all()
+    })
+
+def course_add(request):
+    if request.method == 'POST':
+        form = CourseForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('course_list')
+    else:
+        form = CourseForm()
+
+    return render(request, 'course_add.html', {'form': form})
+
+
+def course_edit(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+
+    if request.method == 'POST':
+        form = CourseForm(request.POST, instance=course)
+        if form.is_valid():
+            form.save()
+            return redirect('course_list')
+    else:
+        form = CourseForm(instance=course)
+
+    return render(request, 'course_edit.html', {'form': form, 'course': course})
+
+def delete_course(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+
+    if request.method == 'POST':
+        course_name = course.name
+        course.delete()
+        messages.success(request, f"The course '{course_name}' has been successfully deleted.")
+        return redirect('course_list')
+
+    return render(request, 'course_delete.html', {'course': course})
+
+
+def expertise_list(request):
+    search_query = request.GET.get('search', '')
+
+    expertise = Expertise.objects.all()
+    if search_query:
+        expertise = expertise.filter(name__icontains=search_query)
+
+    return render(request, 'expertise_list.html', {
+        'expertise': expertise,
+    })
+
+def expertise_add(request):
+    if request.method == 'POST':
+        form = ExpertiseForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "New expertise added successfully!")
+            return redirect('expertise_list')
+    else:
+        form = ExpertiseForm()
+
+    return render(request, 'expertise_add.html', {'form': form})
+
+def expertise_edit(request, expertise_id):
+    expertise = get_object_or_404(Expertise, id=expertise_id)
+
+    if request.method == 'POST':
+        form = ExpertiseForm(request.POST, instance=expertise)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Expertise updated successfully!")
+            return redirect('expertise_list')
+    else:
+        form = ExpertiseForm(instance=expertise)
+
+    return render(request, 'expertise_edit.html', {'form': form, 'expertise': expertise})
+
+def expertise_delete(request, expertise_id):
+    expertise = get_object_or_404(Expertise, id=expertise_id)
+
+    if request.method == 'POST':
+        expertise_name = expertise.name
+        expertise.delete()
+        messages.success(request, f"'{expertise_name}' has been deleted.")
+        return redirect('expertise_list')
+
+    return render(request, 'expertise_delete.html', {'expertise': expertise})
 
 
 @login_required

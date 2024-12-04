@@ -1,0 +1,45 @@
+{% extends 'base_content.html' %}
+{% block content %}
+<div class="container mt-4">
+  <h1>Details for {{ tutor.user.full_name }}</h1>
+  <p><strong>Email:</strong> {{ tutor.user.email }}</p>
+
+  <h3>Expertise</h3>
+  <ul>
+    {% for expertise in expertise %}
+      <li>{{ expertise.name }}</li>
+    {% empty %}
+      <li>No expertise listed.</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Available Sessions</h3>
+  <ul>
+    {% for session in available_sessions %}
+      <li>{{ session.course.name }} - {{ session.time|date:"H:i" }} on {{ session.start_date }}</li>
+    {% empty %}
+      <li>No available sessions.</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Booked Sessions</h3>
+  <ul>
+    {% for session in booked_sessions %}
+      <li>{{ session.course.name }} - {{ session.time|date:"H:i" }} on {{ session.start_date }}</li>
+    {% empty %}
+      <li>No booked sessions.</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Booked Lessons</h3>
+  <ul>
+    {% for lesson in booked_lessons %}
+      <li>
+        {{ lesson.course.name }} - {{ lesson.student.user.full_name }} ({{ lesson.student.user.email }})
+      </li>
+    {% empty %}
+      <li>No booked lessons.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

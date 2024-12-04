@@ -108,6 +108,21 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
             password=self.cleaned_data.get('new_password'),
         )
         return user
+
+
+class CourseForm(forms.ModelForm):
+    class Meta:
+        model = Course
+        fields = ['name', 'description', 'level', 'price_per_hour', 'ProgrammingLanguage']
+
+class ExpertiseForm(forms.ModelForm):
+    class Meta:
+        model = Expertise
+        fields = ['name']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter expertise name'}),
+        }
+
     
 
 class LessonRequestForm(forms.Form):
