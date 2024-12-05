@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-info" role="alert">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    <h1>My Courses</h1>
+    {% if courses_and_tutors %}
+        <ul>
+            {% for item in courses_and_tutors %}
+                <li>
+                    <strong>Course:</strong> {{ item.course_name }} <br>
+                    <strong>Tutor:</strong> {{ item.tutor_name }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</div>
+{% endblock %}

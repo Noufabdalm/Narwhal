@@ -53,6 +53,8 @@ urlpatterns = [
     path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('request_cancellation/', views.CancellationRequestView, name='cancellation_request'),
     path('manage_cancellation_requests/', views.manage_cancellation_requests, name='manage_cancellation_requests'),
-    path('tutor_sign_up/', views.TutorSignUpView.as_view(), name='tutor_sign_up')
+    path('tutor_sign_up/', views.TutorSignUpView.as_view(), name='tutor_sign_up'),
+    path('my-courses/', views.student_courses_view, name='student_courses'),
 ]
+
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

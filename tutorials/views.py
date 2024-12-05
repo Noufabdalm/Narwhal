@@ -16,8 +16,6 @@ from datetime import timedelta
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.contrib.admin.views.decorators import staff_member_required
-
-
 from .models import Student, LessonRequest,Admin, TutorSession, Expertise,Lesson, Invoice , Tutor, Course, CancellationRequest
 from .forms import CourseForm, ExpertiseForm
 from django.db.models import Prefetch
@@ -38,6 +36,30 @@ def dashboard(request):
     }
     return render(request, 'dashboard.html', {'user': current_user})
 
+@login_required
+def student_courses_view(request):
+    """Display courses a student is enrolled in and their assigned tutors."""
+    try:
+        student = request.user.student_profile
+    except AttributeError:
+        messages.error(request, "You are not authorized to view this page.")
+        return redirect('dashboard')
+
+    lessons = Lesson.objects.filter(student=student)
+
+    if not lessons.exists():
+        messages.info(request, "You are not enrolled in any courses yet.")
+        return render(request, 'student_courses.html', {"courses_and_tutors": []})
+
+    courses_and_tutors = [
+        {
+            "course_name": lesson.course.name,
+            "tutor_name": lesson.tutor.user.full_name()
+        }
+        for lesson in lessons
+    ]
+
+    return render(request, 'student_courses.html', {"courses_and_tutors": courses_and_tutors})
 
 @login_prohibited
 def home(request):
