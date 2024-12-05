@@ -1,0 +1,44 @@
+
+{% extends "base_content.html" %}
+
+{% block content %}
+  <div class="container mt-5">
+    <h2 class="mb-4">My Lesson Requests</h2>
+
+    {% if lesson_requests %}
+      <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Course</th>
+            <th scope="col">Term</th>
+            <th scope="col">Frequency</th>
+            <th scope="col">Requested Date</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for request in lesson_requests %}
+            <tr>
+              <th scope="row">{{ forloop.counter }}</th>
+              <td>{{ request.course.name }} ({{ request.course.level }})</td>
+              <td>{{ request.term.name }}</td>
+              <td>{{ request.frequency }}</td>
+              <td>{{ request.request_date|date:"F j, Y, g:i a" }}</td>
+              <td>
+                <span class="badge 
+                  {% if request.status == 'pending' %}badge-warning{% elif request.status == 'allocated' %}badge-success{% elif request.status == 'rejected' %}badge-danger{% endif %}">
+                  {{ request.get_status_display }}
+                </span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="alert alert-info">
+        You have not submitted any lesson requests yet.
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
