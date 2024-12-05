@@ -377,8 +377,8 @@ class Lesson(models.Model):
 class Invoice(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='invoices')
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='invoice')
-    total_amount = models.DecimalField(max_digits=7, decimal_places=2, blank=True, null = True)
-    due_date = models.DateField(blank=True, null = True)
+    total_amount = models.DecimalField(max_digits=7, decimal_places=2, blank=True, null=True)
+    due_date = models.DateField(blank=True, null=True)
     status = models.CharField(
         max_length=20,
         choices=[
@@ -387,14 +387,9 @@ class Invoice(models.Model):
         ],
         default='unpaid'
     )
-  
+
     def __str__(self):
         return f"Invoice for {self.student.user.username} ({self.status})"
     
     def save(self, *args, **kwargs):
-     """
-     Ensure session gets marked as booked and the request status updated to 'allocated'.
-     """
-     super().save(*args, **kwargs)
-
-
+        super().save(*args, **kwargs)
