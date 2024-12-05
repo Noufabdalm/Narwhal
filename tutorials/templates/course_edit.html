@@ -7,18 +7,11 @@
         <div class="row g-3">
             <div class="col-md-6">
                 <label for="id_name" class="form-label">Name:</label>
-                <input type="text" name="name" id="id_name" class="form-control" value="{{ form.initial.name }}" placeholder="Enter course name">
+                <input type="text" id="id_name" class="form-control" value="{{ form.initial.name }}" readonly>
             </div>
             <div class="col-md-6">
                 <label for="id_price_per_hour" class="form-label">Price per hour:</label>
-                <select name="price_per_hour" id="id_price_per_hour" class="form-select">
-                    <option value="">Select price</option>
-                    {% for value, label in form.fields.price_per_hour.choices %}
-                    <option value="{{ value }}" {% if form.initial.price_per_hour == value %}selected{% endif %}>
-                        {{ label }}
-                    </option>
-                    {% endfor %}
-                </select>
+                <input type="text" id="id_price_per_hour" class="form-control" value="{{ form.initial.price_per_hour }}" readonly>
             </div>
         </div>
         <div class="row g-3 mt-3">
@@ -47,13 +40,59 @@
         </div>
         <div class="mt-3">
             <label for="id_description" class="form-label">Description:</label>
-            <textarea name="description" id="id_description" class="form-control" rows="4" placeholder="Enter course description">{{ form.initial.description }}</textarea>
+            <textarea id="id_description" class="form-control" rows="4" readonly>{{ form.initial.description }}</textarea>
         </div>
         <div class="mt-4 text-end">
-             <a href="{% url 'course_delete' course.id %}" class="btn btn-danger">Delete Course</a>
+            <a href="{% url 'course_list' %}" class="btn btn-secondary">Back</a>
+            <a href="{% url 'course_delete' course.id %}" class="btn btn-danger">Delete Course</a>
             <button type="submit" class="btn btn-primary">Save Changes</button>
         </div>
-
     </form>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const levelField = document.getElementById("id_level");
+        const expertiseField = document.getElementById("id_ProgrammingLanguage");
+        const nameField = document.getElementById("id_name");
+        const priceField = document.getElementById("id_price_per_hour");
+        const descriptionField = document.getElementById("id_description");
+
+        const levelPrices = {
+            beginner: "£20/hour",
+            intermediate: "£40/hour",
+            advanced: "£60/hour",
+        };
+
+        function getArticle(word) {
+            const vowels = ['a', 'e', 'i', 'o', 'u'];
+            return vowels.includes(word[0].toLowerCase()) ? 'an' : 'a';
+        }
+
+        function updateFields() {
+            const level = levelField.value;
+            const expertise = expertiseField.options[expertiseField.selectedIndex]?.text;
+
+            if (level && expertise) {
+                const article = getArticle(level);
+
+                nameField.value = `${expertise} ${level.charAt(0).toUpperCase() + level.slice(1)} Course`;
+                priceField.value = levelPrices[level];
+                descriptionField.value = `This is ${article} ${level.toLowerCase()} course for ${expertise}`;
+            } else {
+                nameField.value = "";
+                priceField.value = "";
+                descriptionField.value = "";
+            }
+        }
+
+        // Populate fields on page load
+        updateFields();
+
+        // Add event listeners to update fields dynamically
+        levelField.addEventListener("change", updateFields);
+        expertiseField.addEventListener("change", updateFields);
+    });
+</script>
 {% endblock %}
+

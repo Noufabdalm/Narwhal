@@ -12,6 +12,9 @@ from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm
 from tutorials.helpers import login_prohibited
 from .models import Student, Lesson, LessonRequest, Tutor, TutorSession, Course, Expertise
 from .forms import CourseForm, ExpertiseForm
+from django.db.models import Prefetch
+from django.core.paginator import Paginator
+
 
 
 @login_required
@@ -159,7 +162,7 @@ def student_list(request):
     search_query = request.GET.get('search', '')
     learning_level = request.GET.get('learning_level', '')
 
-    students = Student.objects.all()
+    students = Student.objects.all().order_by('id')
 
     if search_query:
         students = students.filter(user__first_name__icontains=search_query)
@@ -169,7 +172,13 @@ def student_list(request):
     for student in students:
         student.gravatar_url = student.user.gravatar()
 
-    return render(request, 'student_list.html', {'students': students})
+    paginator = Paginator(students, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'student_list.html', {
+        'page_obj': page_obj,
+        'students': page_obj.object_list,})
 
 
 def student_details(request, student_id):
@@ -182,12 +191,15 @@ def student_details(request, student_id):
     lesson_requests = LessonRequest.objects.filter(student=student)
     schedule = Lesson.objects.filter(student=student).order_by('session__start_date', 'session__time')
 
+    back_url = request.META.get('HTTP_REFERER', reverse('student_list'))
+
     context = {
         'student': student,
         'enrolled_courses': enrolled_courses,
         'assigned_tutors': assigned_tutors,
         'lesson_requests': lesson_requests,
         'schedule': schedule,
+        'back_url': back_url,
     }
 
     return render(request, 'student_detail.html', context)
@@ -196,26 +208,35 @@ def student_details(request, student_id):
 def tutor_list(request):
     search_query = request.GET.get('search', '').strip()
 
-    tutors = Tutor.objects.all()
+    tutors = Tutor.objects.all().order_by('id')
 
     if search_query:
         tutors = tutors.filter(user__first_name__icontains=search_query)
 
-    return render(request, 'tutor_list.html', {'tutors': tutors.distinct()})
+    paginator = Paginator(tutors, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'tutor_list.html',
+        {'page_obj': page_obj,
+         'tutors': page_obj.object_list,})
 
 def tutor_detail(request, tutor_id):
     tutor = get_object_or_404(Tutor, id=tutor_id)
     expertise = tutor.expertise.all()
     available_sessions = TutorSession.objects.filter(tutor=tutor, is_booked=False)
-    booked_sessions = TutorSession.objects.filter(tutor=tutor, is_booked=True)
-    booked_lessons = Lesson.objects.filter(tutor=tutor).select_related('student__user', 'course')
+    booked_sessions = TutorSession.objects.filter(tutor=tutor, is_booked=True).prefetch_related(
+        Prefetch('lessons', queryset=Lesson.objects.select_related('student__user', 'course'))
+    )
+
+    back_url = request.META.get('HTTP_REFERER', reverse('tutor_list'))
 
     return render(request, 'tutor_detail.html', {
         'tutor': tutor,
         'expertise': expertise,
         'available_sessions': available_sessions,
         'booked_sessions': booked_sessions,
-        'booked_lessons': booked_lessons,
+        'back_url' : back_url,
     })
 
 
@@ -223,7 +244,7 @@ def course_list(request):
     search_query = request.GET.get('search', '')
     expertise_filter = request.GET.get('expertise', '')
 
-    courses = Course.objects.all()
+    courses = Course.objects.all().order_by('name')
 
     if search_query:
         courses = courses.filter(name__icontains=search_query)
@@ -231,8 +252,13 @@ def course_list(request):
     if expertise_filter:
         courses = courses.filter(ProgrammingLanguage__name__iexact=expertise_filter)
 
+    paginator = Paginator(courses, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     return render(request, 'course_list.html', {
-        'courses': courses,
+        'page_obj': page_obj,
+        'courses': page_obj.object_list,
         'expertise': Expertise.objects.all()
     })
 
@@ -276,12 +302,18 @@ def delete_course(request, course_id):
 def expertise_list(request):
     search_query = request.GET.get('search', '')
 
-    expertise = Expertise.objects.all()
+    expertise = Expertise.objects.all().order_by('name')
     if search_query:
         expertise = expertise.filter(name__icontains=search_query)
 
+    paginator = Paginator(expertise, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+
     return render(request, 'expertise_list.html', {
-        'expertise': expertise,
+        'page_obj': page_obj,
+        'expertise': page_obj.object_list,
     })
 
 def expertise_add(request):

@@ -113,7 +113,39 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
 class CourseForm(forms.ModelForm):
     class Meta:
         model = Course
-        fields = ['name', 'description', 'level', 'price_per_hour', 'ProgrammingLanguage']
+        fields = ['level', 'ProgrammingLanguage']
+
+    def clean(self):
+        cleaned_data = super().clean()
+        level = cleaned_data.get('level')
+        expertise = cleaned_data.get('ProgrammingLanguage')
+
+        LEVEL_PRICES = {
+            'beginner': 20.0,
+            'intermediate': 40.0,
+            'advanced': 60.0,
+        }
+        def get_article(word):
+            if word[0].lower() in 'aeiou':
+                return 'an'
+            return 'a'
+
+        if level and expertise:
+            cleaned_data['name'] = f"{expertise.name.capitalize()} {level.capitalize()} Course"
+            article = get_article(level)
+            cleaned_data['description'] = f"This is {article} {level.lower()} course for {expertise.name.capitalize()}"
+            cleaned_data['price_per_hour'] = LEVEL_PRICES[level]
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        course = super().save(commit=False)
+        course.name = self.cleaned_data['name']
+        course.description = self.cleaned_data['description']
+        course.price_per_hour = self.cleaned_data['price_per_hour']
+        if commit:
+            course.save()
+        return course
 
 class ExpertiseForm(forms.ModelForm):
     class Meta:

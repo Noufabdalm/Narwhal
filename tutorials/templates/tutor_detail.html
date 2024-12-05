@@ -24,22 +24,16 @@
 
   <h3>Booked Sessions</h3>
   <ul>
-    {% for session in booked_sessions %}
-      <li>{{ session.course.name }} - {{ session.time|date:"H:i" }} on {{ session.start_date }}</li>
-    {% empty %}
-      <li>No booked sessions.</li>
-    {% endfor %}
+  {% for session in booked_sessions %}
+    <li>
+      <strong>Course:</strong> {{ session.course.name }}<br>
+      <strong>Time:</strong> {{ session.time|date:"H:i" }} on {{ session.start_date }}<br>
+      <strong>Students:</strong> {{ session.lessons.first.student.user.full_name }} ({{ session.lessons.first.student.user.email }})
+    </li>
+  {% empty %}
+    <li>No booked sessions.</li>
+  {% endfor %}
   </ul>
-
-  <h3>Booked Lessons</h3>
-  <ul>
-    {% for lesson in booked_lessons %}
-      <li>
-        {{ lesson.course.name }} - {{ lesson.student.user.full_name }} ({{ lesson.student.user.email }})
-      </li>
-    {% empty %}
-      <li>No booked lessons.</li>
-    {% endfor %}
-  </ul>
+  <a href="{{ back_url }}" class="btn btn-secondary">Back</a>
 </div>
 {% endblock %}
