@@ -1,0 +1,15 @@
+{% extends 'base_content.html' %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Confirm Lesson Booking</h2>
+    <p><strong>Student:</strong> {{ student_name }}</p>
+    <p><strong>Request:</strong> {{ request_details }}</p>
+    <p><strong>Session:</strong> {{ session_details }}</p>
+    <p><strong>Invoice Amount:</strong> ${{ invoice_amount }}</p>
+    <p><strong>Due Date:</strong> {{ due_date }}</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success">Confirm Booking</button>
+    </form>
+</div>
+{% endblock %}

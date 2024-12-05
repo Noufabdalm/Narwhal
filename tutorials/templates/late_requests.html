@@ -1,0 +1,17 @@
+{% extends "base_content.html" %}
+
+{% block content %}
+<h2>Late Lesson Requests</h2>
+{% if late_requests %}
+    <ul>
+        {% for request in late_requests %}
+            <li>
+                {{ request.student.user.full_name }} requested {{ request.course.name }} (Term: {{ request.term.name }}) on {{ request.request_date }}
+                - Status: {{ request.get_status_display }}
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>There are no late requests at the moment.</p>
+{% endif %}
+{% endblock %}
