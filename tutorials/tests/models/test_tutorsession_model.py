@@ -23,7 +23,7 @@ class TutorSessionModelTestCase(TestCase):
         self.expertise = Expertise.objects.create(name="Python")
         self.course = Course.objects.create(
             name="Python for Beginners",
-            description="Introductory Python course",
+            description="Basics in Python",
             level="beginner",
             price_per_hour=20.0,
             ProgrammingLanguage=self.expertise
@@ -56,7 +56,7 @@ class TutorSessionModelTestCase(TestCase):
 
     def test_calculate_term_cost(self):
         """Test term cost calculation based on session details."""
-        expected_cost = 12 * (20.0 * (60 / 60.0))  # 240
+        expected_cost = 12 * (20.0 * (60 / 60.0))  
         self.assertEqual(self.session.calculate_term_cost(), expected_cost)
 
     def test_duplicate_session_is_invalid(self):
@@ -77,7 +77,7 @@ class TutorSessionModelTestCase(TestCase):
 
     def test_clean_method(self):
         """Test the clean method for duplicate sessions."""
-        self.session.clean()  # Should pass without exceptions
+        self.session.clean()  
 
     def test_save_method_sets_start_and_end_dates(self):
         """Test the save method calculates and sets start and end dates."""

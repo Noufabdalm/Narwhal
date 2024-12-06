@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from tutorials.models import User, Tutor, Student, Expertise, Course,Term
+from tutorials.models import User, Tutor, Student, Expertise, Course, Term
 from datetime import date
 from faker import Faker
 from random import randint, choice, sample
@@ -9,6 +9,7 @@ user_fixtures = [
     {'username': '@janedoe', 'email': 'jane.doe@example.org', 'first_name': 'Jane', 'last_name': 'Doe'},
     {'username': '@charlie', 'email': 'charlie.johnson@example.org', 'first_name': 'Charlie', 'last_name': 'Johnson'},
 ]
+
 expertises = [
     "Python", "JavaScript", "Java", "C++", "C#", "PHP", "Swift", "Kotlin", "Go", "Rust", "Ruby", "TypeScript", "SQL",
     "React", "Vue.js", "Angular", "Next.js",
@@ -33,17 +34,19 @@ class Command(BaseCommand):
         self.create_tutors()
         self.create_students()
         self.create_courses()
-        self.create_Terms()
+        self.create_terms()
 
     def create_users(self):
-        if User.objects.count ==0:
-            self.generate_user_fixtures()
-        self.generate_random_users()
-
-    def generate_user_fixtures(self):
-        fixturesGenerated = True
+        print("Seeding users...")
+        # Check if user fixtures already exist
         for data in user_fixtures:
-            self.try_create_user(data)
+            if not User.objects.filter(username=data['username']).exists():
+                self.try_create_user(data)
+            else:
+                print(f"User fixture {data['username']} already exists. Skipping.")
+
+        self.generate_random_users()
+        print("User seeding complete.")
 
     def generate_random_users(self):
         user_count = User.objects.count()
@@ -51,7 +54,6 @@ class Command(BaseCommand):
             print(f"Seeding user {user_count}/{self.USER_COUNT}", end='\r')
             self.generate_user()
             user_count = User.objects.count()
-        print("User seeding complete.")
 
     def generate_user(self):
         first_name = self.faker.first_name()
@@ -106,7 +108,6 @@ class Command(BaseCommand):
                 students_created += 1
         print("Student seeding complete.")
 
-
     def create_courses(self):
         print("Seeding courses...")
         LEVELS = {
@@ -126,23 +127,21 @@ class Command(BaseCommand):
                 )
         print("Courses seeding complete.")
 
-    def create_Terms(self):
-           print("Seeding terms...")
-           TERM_CHOICES = [
-                ('autumn', date(2024, 9, 1), date(2024, 12, 31)),
-                ('spring', date(2025, 1, 1), date(2025, 4, 15)),
-                ('summer', date(2025, 5, 1), date(2025, 7, 31)),
-            ]
+    def create_terms(self):
+        print("Seeding terms...")
+        TERM_CHOICES = [
+            ('autumn', date(2025, 9, 1), date(2025, 12, 31)),
+            ('spring', date(2026, 1, 1), date(2026, 4, 15)),
+            ('summer', date(2026, 5, 1), date(2026, 7, 31)),
+        ]
 
-           for name, start_date, end_date in TERM_CHOICES:
-                if not Term.objects.filter(name=name).exists():
-                    Term.objects.create(name=name, start_date=start_date, end_date=end_date)
-                    print(f"Term '{name}' created.")
-                else:
-                    print(f"Term '{name}' already exists.")
-           print("Term seeding complete.")
-
-
+        for name, start_date, end_date in TERM_CHOICES:
+            if not Term.objects.filter(name=name).exists():
+                Term.objects.create(name=name, start_date=start_date, end_date=end_date)
+                print(f"Term '{name}' created.")
+            else:
+                print(f"Term '{name}' already exists.")
+        print("Term seeding complete.")
 
     def random_expertise(self, expertise_list):
         # Choose a random number of skills between 1 and 10

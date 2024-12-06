@@ -5,7 +5,6 @@ from tutorials.models import Expertise
 
 
 class ExpertiseModelTestCase(TestCase):
-    """Unit tests for the Expertise model."""
 
     def setUp(self):
         self.expertise = Expertise.objects.create(name='python')

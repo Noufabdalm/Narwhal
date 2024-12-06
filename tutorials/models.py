@@ -4,8 +4,10 @@ from django.db import models
 from libgravatar import Gravatar
 from django.utils.timezone import now
 from datetime import time, timedelta
+import datetime
 from django.core.exceptions import ValidationError
 from decimal import Decimal
+
 
 class User(AbstractUser):
     """Model used for user authentication, and team member related information."""
@@ -153,6 +155,17 @@ class Term(models.Model):
 
     def __str__(self):
         return self.get_name_display()
+    
+    def clean(self):
+        """Validate that the name field matches one of the TERM_CHOICES."""
+        valid_choices = [choice[0] for choice in self.TERM_CHOICES]
+        if self.name not in valid_choices:
+            raise ValidationError(f"{self.name} is not a valid term name.")
+
+    def save(self, *args, **kwargs):
+        """Override save to call clean before saving."""
+        self.clean()
+        super().save(*args, **kwargs)
 
 
 class TutorSession(models.Model):
@@ -279,7 +292,8 @@ class LessonRequest(models.Model):
         default='pending'
     )
     # Flag to determine if the request is late or not
-    is_late = models.BooleanField(default=False)  
+    is_late = models.BooleanField(default=False)
+    requested_date = models.DateField(default=datetime.date.today)
     
 
 
@@ -293,7 +307,7 @@ class LessonRequest(models.Model):
         days_until_term_starts = (self.term.start_date - now().date()).days
         if days_until_term_starts < 14:
             self.is_late = True
-            #self.save()
+        
 
     def get_available_tutor_sessions(self):
         """
@@ -311,7 +325,7 @@ class LessonRequest(models.Model):
         """
         Override the save method to check if the request is late before saving.
         """
-        #self.check_and_mark_late()
+        self.check_and_mark_late()
         super().save(*args, **kwargs)
     
     
@@ -339,8 +353,8 @@ class Lesson(models.Model):
         on_delete=models.CASCADE,
         related_name='allocated_lesson'
     )
-
     rollover = models.BooleanField(default=True) # Student is going to take the model next term unless a change or cancellation is requested
+    
 
     def clean(self):
         super().clean()
@@ -374,8 +388,8 @@ class Lesson(models.Model):
 class Invoice(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='invoices')
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='invoice')
-    total_amount = models.DecimalField(max_digits=7, decimal_places=2, blank=True, null = True)
-    due_date = models.DateField(blank=True, null = True)
+    total_amount = models.DecimalField(max_digits=7, decimal_places=2, blank=True, null=True)
+    due_date = models.DateField(blank=True, null=True)
     status = models.CharField(
         max_length=20,
         choices=[
@@ -384,14 +398,24 @@ class Invoice(models.Model):
         ],
         default='unpaid'
     )
-  
+
     def __str__(self):
         return f"Invoice for {self.student.user.username} ({self.status})"
     
+    @classmethod
+    def get_invoice_details(cls):
+        """
+        Returns a dictionary containing invoice status and amount for each student and lesson.
+        """
+        invoice_details = []
+        for invoice in cls.objects.select_related('student', 'lesson').all():
+            invoice_details.append({
+                'student': invoice.student.user.get_full_name(),
+                'lesson': str(invoice.lesson),  # Assuming the Lesson model has a meaningful __str__ method
+                'status': invoice.status,
+                'amount': invoice.total_amount,
+            })
+        return invoice_details
+    
     def save(self, *args, **kwargs):
-     """
-     Ensure session gets marked as booked and the request status updated to 'allocated'.
-     """
-     super().save(*args, **kwargs)
-
-
+        super().save(*args, **kwargs)
