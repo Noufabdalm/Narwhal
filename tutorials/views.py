@@ -73,6 +73,34 @@ def student_lesson_schedule_view(request):
 
     return render(request, 'student_lesson_schedule.html', {"schedule": schedule})
 
+@login_required
+def tutor_schedule_view(request):
+    """Display the schedule for the logged-in tutor, including assigned students and lesson details."""
+    try:
+        tutor = request.user.tutor_profile
+    except AttributeError:
+        messages.error(request, "You are not authorized to view this page.")
+        return redirect('dashboard')
+
+    lessons = Lesson.objects.filter(tutor=tutor).order_by('session__start_date', 'session__time')
+
+    if not lessons.exists():
+        messages.info(request, "No lessons scheduled.")
+        return render(request, 'tutor_schedule.html', {"schedule": []})
+
+    schedule = [
+        {
+            "course_name": lesson.course.name,
+            "student_name": lesson.student.user.full_name(),
+            "time": lesson.session.time.strftime("%I:%M %p"),
+            "date": lesson.session.start_date.strftime("%Y-%m-%d"),
+            "term": lesson.term.name,
+        }
+        for lesson in lessons
+    ]
+
+    return render(request, 'tutor_schedule.html', {"schedule": schedule})
+
 @login_prohibited
 def home(request):
     """Display the application's start/home screen."""
