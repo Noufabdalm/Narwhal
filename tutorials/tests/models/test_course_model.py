@@ -5,7 +5,6 @@ from django.core.exceptions import ValidationError
 
 
 class CourseModelTestCase(TestCase):
-    """Unit tests for the Course model."""
 
     def setUp(self):
         self.expertise = Expertise.objects.create(name='python')
