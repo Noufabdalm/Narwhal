@@ -2,7 +2,7 @@
 from django import forms
 from django.contrib.auth import authenticate
 from django.core.validators import RegexValidator
-from .models import User, Course, Expertise
+from .models import User, Expertise, LessonRequest, Student, TutorSession, Term, Course
 
 class LogInForm(forms.Form):
     """Form enabling registered users to log in."""
@@ -108,7 +108,66 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
             password=self.cleaned_data.get('new_password'),
         )
         return user
+    
 
+class LessonRequestForm(forms.Form):
+    """Form to request a new lesson by specifying the preferred time, language, and type of lesson."""
+    course = forms.ModelChoiceField(
+        queryset=Course.objects.all(),  
+        empty_label="Select a Course",
+        widget=forms.Select(attrs={'class': 'form-control'})  
+    )
+
+    frequency = forms.ChoiceField(
+        choices=TutorSession.FREQUENCY_CHOICES,
+        label="Frequency",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    term = forms.ModelChoiceField(
+        queryset=Term.objects.all(),
+        label="Term",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+
+    preferred_time = forms.ChoiceField(
+        choices=TutorSession.TIME_CHOICES,
+        label="Preferred Time",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+
+
+
+
+"""LESSON BOOKING FORMS START"""
+
+class StudentSelectionForm(forms.Form):
+    student = forms.ModelChoiceField(
+        queryset=Student.objects.all(),
+        label="Select a Student",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        required=True,
+    )
+
+
+class RequestSelectionForm(forms.Form):
+    request = forms.ModelChoiceField(
+        queryset=LessonRequest.objects.none(),  # Queryset populated dynamically
+        label="Select a Request",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        required=True,
+    )
+
+
+class SessionSelectionForm(forms.Form):
+    session = forms.ModelChoiceField(
+        queryset=TutorSession.objects.none(),  # Queryset populated dynamically
+        label="Select a Session",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        required=True,
+    )
+
+"""LESSON BOOKING FORMS END"""
 
 class CourseForm(forms.ModelForm):
     class Meta:
@@ -154,3 +213,4 @@ class ExpertiseForm(forms.ModelForm):
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter expertise name'}),
         }
+

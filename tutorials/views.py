@@ -1,4 +1,5 @@
 from django.conf import settings
+from django import forms
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
@@ -8,9 +9,15 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.views import View
 from django.views.generic.edit import FormView, UpdateView
 from django.urls import reverse
-from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm
+from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm, LessonRequestForm, StudentSelectionForm,RequestSelectionForm,SessionSelectionForm
 from tutorials.helpers import login_prohibited
-from .models import Student, Lesson, LessonRequest, Tutor, TutorSession, Course, Expertise
+from django.utils import timezone
+from datetime import timedelta
+
+from django.contrib.admin.views.decorators import staff_member_required
+
+
+from .models import Student, LessonRequest, Term, TutorSession, Expertise,Lesson, Invoice , Tutor, Course
 from .forms import CourseForm, ExpertiseForm
 from django.db.models import Prefetch
 from django.core.paginator import Paginator
@@ -156,7 +163,197 @@ class SignUpView(LoginProhibitedMixin, FormView):
 
     def get_success_url(self):
         return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
+    
 
+class LessonRequestView(LoginRequiredMixin, FormView): 
+    form_class = LessonRequestForm  
+    template_name = "lesson_requests.html"
+    success_url = '/dashboard/'
+
+    def post(self, request, *args, **kwargs):
+        form = self.form_class(request.POST)
+        if form.is_valid():
+            # Extract the cleaned data
+            term = form.cleaned_data['term']
+            course = form.cleaned_data['course']
+            preferred_time = form.cleaned_data['preferred_time']
+            frequency = form.cleaned_data['frequency']
+
+            try:
+                # Ensure the logged-in user is a student
+                student = Student.objects.get(user=request.user)
+            except Student.DoesNotExist:
+                messages.error(request, "You must be a registered student to request a lesson.")
+                return redirect(self.get_success_url())
+            
+            # Check if the request is late
+            two_weeks_before = term.start_date - timedelta(weeks=2)
+            is_late = timezone.now().date() > two_weeks_before
+
+            # Create the LessonRequest instance
+            lesson_request = LessonRequest.objects.create(
+                student=student,
+                frequency=frequency,
+                course=course,
+                term=term,
+                status='pending',
+            )
+
+            messages.success(request, "Your lesson request has been submitted successfully!")
+            return redirect(self.success_url)
+
+        # If form is not valid, re-render the form with errors
+        return render(request, self.template_name, {'form': form})
+
+    def get(self, request, *args, **kwargs):
+        """
+        Handle GET requests to display the LessonRequestForm.
+        """
+        form = self.form_class()
+        return render(request, self.template_name, {'form': form})
+    
+
+"""LESSON BOOKING VIEWS START"""
+# Step 1: Select Student
+class SelectStudentView(FormView):
+    template_name = "select_student.html"
+    form_class = StudentSelectionForm
+
+    def form_valid(self, form):
+        student = form.cleaned_data['student']
+        self.request.session['student_id'] = student.id  # Store student in session
+        return redirect(reverse("select_request"))  # Redirect to the next step
+
+
+# Step 2: Select Request
+class SelectRequestView(FormView):
+    template_name = "select_request.html"
+    form_class = RequestSelectionForm
+
+    def get_form(self):
+        student_id = self.request.session.get('student_id')
+        if not student_id:
+            messages.error(self.request, "Please select a student first.")
+            return redirect(reverse("select_student"))
+        form = super().get_form()
+        form.fields['request'].queryset = LessonRequest.objects.filter(student_id=student_id, status='pending')
+        return form
+
+    def form_valid(self, form):
+        lesson_request = form.cleaned_data['request']
+        self.request.session['request_id'] = lesson_request.id
+        return redirect(reverse("select_session"))  # Redirect to the next step
+
+
+# Step 3: Select Session
+class SelectSessionView(FormView):
+    template_name = "select_session.html"
+    form_class = SessionSelectionForm
+
+    def get_form(self):
+        request_id = self.request.session.get('request_id')
+        if not request_id:
+            messages.error(self.request, "Please select a lesson request first.")
+            return redirect(reverse("select_request"))
+        form = super().get_form()
+        lesson_request = LessonRequest.objects.get(id=request_id)
+        form.fields['session'].queryset = TutorSession.objects.filter(
+            course=lesson_request.course,
+            term=lesson_request.term,
+            is_booked=False
+        )
+        return form
+
+    def form_valid(self, form):
+        session = form.cleaned_data['session']
+        self.request.session['session_id'] = session.id
+        return redirect(reverse("confirm_booking"))
+
+
+class ConfirmLessonBookingView(FormView):
+    template_name = "confirm_booking.html"
+    form_class = forms.Form  # No fields needed, just confirmation
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        student_id = self.request.session.get('student_id')
+        request_id = self.request.session.get('request_id')
+        session_id = self.request.session.get('session_id')
+
+        if student_id:
+            context['student_name'] = Student.objects.get(id=student_id).user.get_full_name()
+        if request_id:
+            lesson_request = LessonRequest.objects.get(id=request_id)
+            context['request_details'] = f"{lesson_request.course.name} ({lesson_request.term.name})"
+        if session_id:
+            tutor_session = TutorSession.objects.get(id=session_id)
+            context['session_details'] = (
+                f"{tutor_session.course.name} - {tutor_session.tutor.user.get_full_name()} "
+                f"on {tutor_session.start_date}"
+            )
+            context['due_date'] = tutor_session.start_date  #Assuming start_date is the due dat
+
+        # Add calculated invoice amount to the context
+        context['invoice_amount'] = self.calculate_invoice_amount()
+
+        return context
+
+    def calculate_invoice_amount(self):
+        """Helper method to calculate the invoice amount."""
+        session_id = self.request.session.get('session_id')
+        if session_id:
+            tutor_session = TutorSession.objects.get(id=session_id)
+            return tutor_session.calculate_term_cost()  # Assuming `calculate_term_cost` is defined in TutorSession
+        return 0
+
+    def form_valid(self, form):
+        student_id = self.request.session.get('student_id')
+        request_id = self.request.session.get('request_id')
+        session_id = self.request.session.get('session_id')
+
+        if not all([student_id, request_id, session_id]):
+            messages.error(self.request, "Some information is missing. Please start over.")
+            return redirect(reverse("select_student"))
+
+        # Fetch instances
+        student = Student.objects.get(id=student_id)
+        lesson_request = LessonRequest.objects.get(id=request_id)
+        session = TutorSession.objects.get(id=session_id)
+
+        # Create the lesson
+        booked_lesson = Lesson.objects.create(
+            student=student,
+            tutor=session.tutor,
+            course=session.course,
+            start_day=session.start_day,
+            start_date=session.start_date,
+            end_date=session.end_date,
+            session=session,
+            term=lesson_request.term,
+            request=lesson_request,
+            rollover=True,
+        )
+
+        # Create the Invoice
+        invoice = Invoice.objects.create(
+            student=student,
+            lesson=booked_lesson,
+            total_amount=self.calculate_invoice_amount(),
+            due_date=session.start_date,
+        )
+
+        # Update related models
+        session.is_booked = True
+        session.save()
+        lesson_request.status = 'allocated'
+        lesson_request.save()
+
+        messages.success(self.request, f"Lesson successfully booked. Invoice amount: ${invoice.total_amount:.2f}")
+        return redirect(reverse("dashboard"))
+
+
+    
+"""LESSON BOOKING VIEWS END"""
 
 def student_list(request):
     search_query = request.GET.get('search', '')
@@ -204,6 +401,17 @@ def student_details(request, student_id):
 
     return render(request, 'student_detail.html', context)
 
+
+@login_required
+def student_lesson_requests(request):
+    """View to display all lesson requests submitted by the logged-in student."""
+    try:
+        student = request.user.student_profile
+    except AttributeError:
+        return render(request, 'error.html', {'message': 'You must be a student to view this page.'})
+
+    lesson_requests = LessonRequest.objects.filter(student=student).order_by('-id')
+    return render(request, 'request_list.html', {'lesson_requests': lesson_requests})
 
 def tutor_list(request):
     search_query = request.GET.get('search', '').strip()

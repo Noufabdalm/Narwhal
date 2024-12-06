@@ -29,6 +29,7 @@ urlpatterns = [
     path('password/', views.PasswordView.as_view(), name='password'),
     path('profile/', views.ProfileUpdateView.as_view(), name='profile'),
     path('sign_up/', views.SignUpView.as_view(), name='sign_up'),
+    path('lesson_requests/', views.LessonRequestView.as_view(), name='lesson_requests'),
     path('students/', views.student_list, name='student_list'),
     path('students/<int:student_id>/', views.student_details, name='student_detail'),
     path('tutors/', views.tutor_list, name='tutor_list'),
@@ -41,5 +42,10 @@ urlpatterns = [
     path('expertise/add/', views.expertise_add, name='expertise_add'),
     path('expertise/<int:expertise_id>/edit/', views.expertise_edit, name='expertise_edit'),
     path('expertise/<int:expertise_id>/delete/', views.expertise_delete, name='expertise_delete'),
+    path('lesson_booking/select_student/', views.SelectStudentView.as_view(), name='select_student'),
+    path('lesson_booking/select_request/', views.SelectRequestView.as_view(), name='select_request'),
+    path('lesson_booking/select_session/', views.SelectSessionView.as_view(), name='select_session'),
+    path('lesson_booking/confirm/', views.ConfirmLessonBookingView.as_view(), name='confirm_booking'),
+    path('request_list/', views.student_lesson_requests, name='request_list'),
 ]
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
