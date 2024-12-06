@@ -1,0 +1,22 @@
+{% extends 'base_content.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h1>Edit Expertise</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="{% url 'expertise_list' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+
+    <hr>
+
+    <a href="{% url 'expertise_delete' expertise_id=expertise.id %}" class="btn btn-danger mt-3">
+        Delete Expertise
+    </a>
+</div>
+{% endblock %}
+
+
+
+

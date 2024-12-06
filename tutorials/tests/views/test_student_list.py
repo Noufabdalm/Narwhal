@@ -26,14 +26,14 @@ class StudentListViewTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'student_list.html')
         students = response.context['students']
-        self.assertEqual(students.count(), 3)
+        self.assertEqual(len(students), 3)
 
     def test_filter_students_by_learning_level(self):
         response = self.client.get(self.url, {'learning_level': 'advanced'})
         self.assertEqual(response.status_code, 200)
         students = response.context['students']
-        self.assertEqual(students.count(), 1)
-        self.assertEqual(students.first().user.first_name, 'Peter')
+        self.assertEqual(len(students), 1)
+        self.assertEqual(students[0].user.first_name, 'Peter')
 
 
 class StudentDetailsViewTestCase(TestCase):

@@ -2,7 +2,7 @@
 from django import forms
 from django.contrib.auth import authenticate
 from django.core.validators import RegexValidator
-from .models import User, LessonRequest, Student, TutorSession, Term, Expertise, Course
+from .models import User, Expertise, LessonRequest, Student, TutorSession, Term, Course
 
 class LogInForm(forms.Form):
     """Form enabling registered users to log in."""
@@ -169,42 +169,48 @@ class SessionSelectionForm(forms.Form):
 
 """LESSON BOOKING FORMS END"""
 
-# class CombinedLessonRequestForm(forms.Form):
-#     # Fields from Student model
-#     learning_level = forms.ChoiceField(
-#         choices=Student.LEARNING_LEVEL_CHOICES, 
-#         label="Learning Level"
-#     )
-    
-#     # Fields from Course model
-#     course = forms.ModelChoiceField(
-#         queryset=Course.objects.all(), 
-#         label="Course"
-#     )
-    
-#     # # Fields from Term model
-#     # term = forms.ModelChoiceField(
-#     #     queryset=Term.objects.all(), 
-#     #     label="Term"
-#     # )
-    
-#     # Additional field for preferred lesson time
-#     preferred_time = forms.DateTimeField(
-#         widget=forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-#         label="Preferred Time"
-#     )
-# #testings      ``
-# class StudentForm(forms.ModelForm):
-#     class Meta:
-#         model = Student
-#         fields = ['learning_level']
+class CourseForm(forms.ModelForm):
+    class Meta:
+        model = Course
+        fields = ['level', 'ProgrammingLanguage']
 
-# class CourseForm(forms.ModelForm):
-#     class Meta:
-#         model = Course
-#         fields = ['name']
+    def clean(self):
+        cleaned_data = super().clean()
+        level = cleaned_data.get('level')
+        expertise = cleaned_data.get('ProgrammingLanguage')
 
-# class TermForm(forms.ModelForm):
-#     class Meta:
-#         model = Term
-#         fields = ['name']    
+        LEVEL_PRICES = {
+            'beginner': 20.0,
+            'intermediate': 40.0,
+            'advanced': 60.0,
+        }
+        def get_article(word):
+            if word[0].lower() in 'aeiou':
+                return 'an'
+            return 'a'
+
+        if level and expertise:
+            cleaned_data['name'] = f"{expertise.name.capitalize()} {level.capitalize()} Course"
+            article = get_article(level)
+            cleaned_data['description'] = f"This is {article} {level.lower()} course for {expertise.name.capitalize()}"
+            cleaned_data['price_per_hour'] = LEVEL_PRICES[level]
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        course = super().save(commit=False)
+        course.name = self.cleaned_data['name']
+        course.description = self.cleaned_data['description']
+        course.price_per_hour = self.cleaned_data['price_per_hour']
+        if commit:
+            course.save()
+        return course
+
+class ExpertiseForm(forms.ModelForm):
+    class Meta:
+        model = Expertise
+        fields = ['name']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter expertise name'}),
+        }
+
