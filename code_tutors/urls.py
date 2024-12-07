@@ -47,7 +47,6 @@ urlpatterns = [
     path('lesson_booking/select_session/', views.SelectSessionView.as_view(), name='select_session'),
     path('lesson_booking/confirm/', views.ConfirmLessonBookingView.as_view(), name='confirm_booking'),
     path('request_list/', views.student_lesson_requests, name='request_list'),
-    path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
 
 ]
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
