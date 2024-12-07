@@ -1,0 +1,86 @@
+{% extends "base_content.html" %}
+
+{% block title %}
+Admin Dashboard
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="text-center mb-4">Admin Dashboard</h1>
+
+    <!-- Lesson Management Section -->
+    <h6 class="text-muted mb-2">Lesson Management</h6>
+    <div class="row g-3">
+        <!-- Total Lessons -->
+        <div class="col-md-6">
+            <div class="p-4 bg-light border rounded">
+                <h5 class="fw-bold text-dark">Total Lessons</h5>
+                <p><strong>{{ total_lessons }}</strong> lessons scheduled.</p>
+                <a href="#" class="btn btn-outline-secondary btn-sm">View Lessons</a>
+            </div>
+        </div>
+        <!-- Pending Requests -->
+        <div class="col-md-6">
+            <div class="p-4 bg-light border rounded">
+                <h5 class="fw-bold text-dark">Pending Requests</h5>
+                <p><strong>{{ pending_requests }}</strong> requests </p>
+                <a href="#" class="btn btn-outline-secondary btn-sm">Manage Requests</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoices Section -->
+    <h6 class="text-muted mt-4 mb-2">Invoices</h6>
+    <div class="row g-3 mt-3">
+        <div class="col-md-12">
+            <div class="p-4 bg-light border rounded">
+                <h5 class="fw-bold text-dark">Invoices</h5>
+                <p><strong>{{ unpaid_invoices }}</strong> invoices </p>
+                <a href="#" class="btn btn-outline-secondary btn-sm">View Invoices</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Courses and Expertise Section -->
+    <h6 class="text-muted mt-4 mb-2">Course and Expertise Management</h6>
+    <div class="row g-3 mt-4">
+        <!-- Courses -->
+        <div class="col-md-6">
+            <div class="p-4 bg-light border rounded">
+                <h5 class="fw-bold text-dark">Courses</h5>
+                <p><strong>{{ total_courses }}</strong> courses available.</p>
+                <a href="{% url 'course_list' %}" class="btn btn-outline-secondary btn-sm">Manage Courses</a>
+            </div>
+        </div>
+        <!-- Expertise -->
+        <div class="col-md-6">
+            <div class="p-4 bg-light border rounded">
+                <h5 class="fw-bold text-dark">Expertise</h5>
+                <p>Manage expertise areas for tutors.</p>
+                <a href="{% url 'expertise_list' %}" class="btn btn-outline-secondary btn-sm">Manage Expertise</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Students and Tutors Section -->
+    <h6 class="text-muted mt-4 mb-2">Student and Tutor Management</h6>
+    <div class="row g-3 mt-4">
+        <!-- Total Students -->
+        <div class="col-md-6">
+            <div class="p-4 bg-light border rounded">
+                <h5 class="fw-bold text-dark">Total Students</h5>
+                <p><strong>{{ total_students }}</strong> students registered.</p>
+                <a href="{% url 'student_list' %}" class="btn btn-outline-secondary btn-sm">View Students</a>
+            </div>
+        </div>
+        <!-- Total Tutors -->
+        <div class="col-md-6">
+            <div class="p-4 bg-light border rounded">
+                <h5 class="fw-bold text-dark">Total Tutors</h5>
+                <p><strong>{{ total_tutors }}</strong> tutors available.</p>
+                <a href="{% url 'tutor_list' %}" class="btn btn-outline-secondary btn-sm">View Tutors</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
