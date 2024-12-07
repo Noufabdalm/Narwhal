@@ -5,17 +5,23 @@
     <div class="col-12">
       <h1>Welcome to your dashboard {{ user.username }}</h1>
       <p>Here are your upcoming lessons:</p>
-  
-      <!-- Display upcoming lessons or any relevant information -->
+
+      
+      <div class="admin-options">
+        <h4>Admin Options</h4>
+        <ul>
+          <li><a href="{% url 'manage_lesson_requests' %}">Manage Lesson Requests</a></li>
+        </ul>
+      </div>
       <ul>
         {% for lesson in lessons %}
           <li>{{ lesson.course.name }} with {{ lesson.tutor.user.first_name }} on {{ lesson.session.start_date }}</li>
         {% endfor %}
       </ul>
     
-      <!-- Add a link to the lesson request page -->
       <a href="{% url 'lesson_requests' %}" class="btn btn-primary">Request a New Lesson</a>
-      <a href="{% url 'request_list' %}">View Lesson Requests</a>
+      <a href="{% url 'student_lesson_requests' %}" class="btn btn-primary">View Lesson Requests</a>
+      <a href="{% url 'allocated_lessons' %}" class="btn btn-primary">View Allocated Lessons </a>
 
     </div>
   </div>

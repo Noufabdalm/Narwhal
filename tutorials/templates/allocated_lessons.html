@@ -1,0 +1,56 @@
+{% extends "base_content.html" %}
+
+{% block content %}
+  <div class="container mt-5">
+    <h2 class="mb-4">Allocated Lessons</h2>
+
+    {% if lessons %}
+      <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Student Name</th>
+            <th scope="col">Course</th>
+            <th scope="col">Tutor</th>
+            <th scope="col">Start Date</th>
+            <th scope="col">End Date</th>
+            <th scope="col">Term</th>
+            <th scope="col">Rollover Status</th>
+            <th scope="col">Paid Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lesson in lessons %}
+            <tr>
+              <th scope="row">{{ forloop.counter }}</th>
+              <td>{{ lesson.student.user.full_name }}</td>
+              <td>{{ lesson.course.name }}</td>
+              <td>{{ lesson.tutor.user.full_name }}</td>
+              <td>{{ lesson.start_date }}</td>
+              <td>{{ lesson.end_date }}</td>
+              <td>{{ lesson.term.name }}</td>
+              <td>
+                {% if lesson.rollover %}
+                  <span class="badge badge-success">Yes</span>
+                {% else %}
+                  <span class="badge badge-secondary">No</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if lesson.request.invoice.status == 'paid' %}
+                  <span class="badge badge-success">Paid</span>
+                {% else %}
+                  <span class="badge badge-warning">Unpaid</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="alert alert-info">
+        No lessons have been allocated yet.
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
