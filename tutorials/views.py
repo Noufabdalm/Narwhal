@@ -9,14 +9,20 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.views import View
 from django.views.generic.edit import FormView, UpdateView
 from django.urls import reverse
-from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm, LessonRequestForm, StudentSelectionForm,RequestSelectionForm,SessionSelectionForm ,CourseForm, ExpertiseForm
+from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm, LessonRequestForm, StudentSelectionForm,RequestSelectionForm,SessionSelectionForm
 from tutorials.helpers import login_prohibited
 from django.utils import timezone
 from datetime import timedelta
 from django.core.paginator import Paginator
-#not sure yet 
+
 from django.contrib.admin.views.decorators import staff_member_required
-from .models import Student, LessonRequest, Term, TutorSession, Expertise,Lesson, Invoice ,Tutor, Admin
+
+
+from .models import Student, LessonRequest,Admin, TutorSession, Expertise,Lesson, Invoice , Tutor, Course
+from .forms import CourseForm, ExpertiseForm
+from django.db.models import Prefetch
+from django.core.paginator import Paginator
+
 
 
 @login_required
@@ -444,7 +450,7 @@ def student_list(request):
     search_query = request.GET.get('search', '')
     learning_level = request.GET.get('learning_level', '')
 
-    students = Student.objects.all()
+    students = Student.objects.all().order_by('id')
 
     if search_query:
         students = students.filter(user__first_name__icontains=search_query)
@@ -454,7 +460,13 @@ def student_list(request):
     for student in students:
         student.gravatar_url = student.user.gravatar()
 
-    return render(request, 'student_list.html', {'students': students})
+    paginator = Paginator(students, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'student_list.html', {
+        'page_obj': page_obj,
+        'students': page_obj.object_list,})
 
 
 def student_details(request, student_id):
@@ -467,12 +479,175 @@ def student_details(request, student_id):
     lesson_requests = LessonRequest.objects.filter(student=student)
     schedule = Lesson.objects.filter(student=student).order_by('session__start_date', 'session__time')
 
+    back_url = request.META.get('HTTP_REFERER', reverse('student_list'))
+
     context = {
         'student': student,
         'enrolled_courses': enrolled_courses,
         'assigned_tutors': assigned_tutors,
         'lesson_requests': lesson_requests,
         'schedule': schedule,
+        'back_url': back_url,
     }
 
     return render(request, 'student_detail.html', context)
+
+
+@login_required
+def student_lesson_requests(request):
+    """View to display all lesson requests submitted by the logged-in student."""
+    try:
+        student = request.user.student_profile
+    except AttributeError:
+        return render(request, 'error.html', {'message': 'You must be a student to view this page.'})
+
+    lesson_requests = LessonRequest.objects.filter(student=student).order_by('-id')
+    return render(request, 'request_list.html', {'lesson_requests': lesson_requests})
+
+def tutor_list(request):
+    search_query = request.GET.get('search', '').strip()
+
+    tutors = Tutor.objects.all().order_by('id')
+
+    if search_query:
+        tutors = tutors.filter(user__first_name__icontains=search_query)
+
+    paginator = Paginator(tutors, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'tutor_list.html',
+        {'page_obj': page_obj,
+         'tutors': page_obj.object_list,})
+
+def tutor_detail(request, tutor_id):
+    tutor = get_object_or_404(Tutor, id=tutor_id)
+    expertise = tutor.expertise.all()
+    available_sessions = TutorSession.objects.filter(tutor=tutor, is_booked=False)
+    booked_sessions = TutorSession.objects.filter(tutor=tutor, is_booked=True).prefetch_related(
+        Prefetch('lessons', queryset=Lesson.objects.select_related('student__user', 'course'))
+    )
+
+    back_url = request.META.get('HTTP_REFERER', reverse('tutor_list'))
+
+    return render(request, 'tutor_detail.html', {
+        'tutor': tutor,
+        'expertise': expertise,
+        'available_sessions': available_sessions,
+        'booked_sessions': booked_sessions,
+        'back_url' : back_url,
+    })
+
+
+def course_list(request):
+    search_query = request.GET.get('search', '')
+    expertise_filter = request.GET.get('expertise', '')
+
+    courses = Course.objects.all().order_by('name')
+
+    if search_query:
+        courses = courses.filter(name__icontains=search_query)
+
+    if expertise_filter:
+        courses = courses.filter(ProgrammingLanguage__name__iexact=expertise_filter)
+
+    paginator = Paginator(courses, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'course_list.html', {
+        'page_obj': page_obj,
+        'courses': page_obj.object_list,
+        'expertise': Expertise.objects.all()
+    })
+
+def course_add(request):
+    if request.method == 'POST':
+        form = CourseForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('course_list')
+    else:
+        form = CourseForm()
+
+    return render(request, 'course_add.html', {'form': form})
+
+
+def course_edit(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+
+    if request.method == 'POST':
+        form = CourseForm(request.POST, instance=course)
+        if form.is_valid():
+            form.save()
+            return redirect('course_list')
+    else:
+        form = CourseForm(instance=course)
+
+    return render(request, 'course_edit.html', {'form': form, 'course': course})
+
+def delete_course(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+
+    if request.method == 'POST':
+        course_name = course.name
+        course.delete()
+        messages.success(request, f"The course '{course_name}' has been successfully deleted.")
+        return redirect('course_list')
+
+    return render(request, 'course_delete.html', {'course': course})
+
+
+def expertise_list(request):
+    search_query = request.GET.get('search', '')
+
+    expertise = Expertise.objects.all().order_by('name')
+    if search_query:
+        expertise = expertise.filter(name__icontains=search_query)
+
+    paginator = Paginator(expertise, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+
+    return render(request, 'expertise_list.html', {
+        'page_obj': page_obj,
+        'expertise': page_obj.object_list,
+    })
+
+def expertise_add(request):
+    if request.method == 'POST':
+        form = ExpertiseForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "New expertise added successfully!")
+            return redirect('expertise_list')
+    else:
+        form = ExpertiseForm()
+
+    return render(request, 'expertise_add.html', {'form': form})
+
+def expertise_edit(request, expertise_id):
+    expertise = get_object_or_404(Expertise, id=expertise_id)
+
+    if request.method == 'POST':
+        form = ExpertiseForm(request.POST, instance=expertise)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Expertise updated successfully!")
+            return redirect('expertise_list')
+    else:
+        form = ExpertiseForm(instance=expertise)
+
+    return render(request, 'expertise_edit.html', {'form': form, 'expertise': expertise})
+
+def expertise_delete(request, expertise_id):
+    expertise = get_object_or_404(Expertise, id=expertise_id)
+
+    if request.method == 'POST':
+        expertise_name = expertise.name
+        expertise.delete()
+        messages.success(request, f"'{expertise_name}' has been deleted.")
+        return redirect('expertise_list')
+
+    return render(request, 'expertise_delete.html', {'expertise': expertise})

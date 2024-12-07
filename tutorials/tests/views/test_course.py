@@ -1,9 +1,10 @@
 from django.test import TestCase
 from django.urls import reverse
-from tutorials.models import Course, Expertise, User
+from tutorials.models import Course, Expertise
 from tutorials.forms import CourseForm
 
 class CourseViewsTestCase(TestCase):
+
     def setUp(self):
         self.expertise_python = Expertise.objects.create(name='Python')
         self.expertise_java = Expertise.objects.create(name='Java')
@@ -63,15 +64,19 @@ class CourseViewsTestCase(TestCase):
 
     def test_post_course_add_valid_data(self):
         data = {
-            'name': 'C++ Intermediate Course',
-            'description': 'Intermediate level C++',
             'level': 'intermediate',
-            'price_per_hour': 40.0,
             'ProgrammingLanguage': self.expertise_python.id
         }
         response = self.client.post(self.add_url, data, follow=True)
+        expected_name = "Python Intermediate Course"
+        expected_description = "This is an intermediate course for Python"
+
         self.assertRedirects(response, self.list_url)
-        self.assertTrue(Course.objects.filter(name='C++ Intermediate Course').exists())
+        self.assertTrue(Course.objects.filter(name=expected_name).exists())
+        course = Course.objects.get(name=expected_name)
+        self.assertEqual(course.description, expected_description)
+        self.assertEqual(course.price_per_hour, 40.0)
+        self.assertEqual(course.ProgrammingLanguage, self.expertise_python)
 
     def test_post_course_add_invalid_data(self):
         data = {'name': ''}

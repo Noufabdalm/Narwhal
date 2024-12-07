@@ -7,7 +7,6 @@ from datetime import date, time
 
 
 class LessonModelTestCase(TestCase):
-    """Unit tests for the Lesson model."""
 
     def setUp(self):
         # Create Users
