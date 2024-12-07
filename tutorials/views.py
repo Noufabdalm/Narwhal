@@ -9,14 +9,14 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.views import View
 from django.views.generic.edit import FormView, UpdateView
 from django.urls import reverse
-from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm, LessonRequestForm, StudentSelectionForm,RequestSelectionForm,SessionSelectionForm ,CourseForm, ExpertiseForm, TutorAllocationForm
+from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm, LessonRequestForm, StudentSelectionForm,RequestSelectionForm,SessionSelectionForm ,CourseForm, ExpertiseForm
 from tutorials.helpers import login_prohibited
 from django.utils import timezone
 from datetime import timedelta
+from django.core.paginator import Paginator
 #not sure yet 
 from django.contrib.admin.views.decorators import staff_member_required
-#not sure yet
-from .models import Student, LessonRequest, Term, TutorSession, Expertise,Lesson, Invoice ,Tutor
+from .models import Student, LessonRequest, Term, TutorSession, Expertise,Lesson, Invoice ,Tutor, Admin
 
 
 @login_required
@@ -164,7 +164,7 @@ class SignUpView(LoginProhibitedMixin, FormView):
 
     def get_success_url(self):
         return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
-    
+
 
 class LessonRequestView(LoginRequiredMixin, FormView): 
     form_class = LessonRequestForm  
@@ -196,12 +196,9 @@ class LessonRequestView(LoginRequiredMixin, FormView):
                 course=course,
                 term=term,
                 status='pending',
-                time= preferred_time,
                 is_late=is_late,
             )
             
-            #storing the time
-            request.session['preferred_time'] = preferred_time
             #Set a warning message if the request is late
             if is_late:
                 messages.warning(request, "Warning: This request was submitted late and may not be prioritized.")
@@ -221,7 +218,20 @@ class LessonRequestView(LoginRequiredMixin, FormView):
         return render(request, self.template_name, {'form': form})
     
 
+def allocated_lessons_view(request):
+    """Admin view to display all allocated lessons."""
+    try:
+        # Ensure the logged-in user is a student
+        admin = Admin.objects.get(user=request.user)
+    except Admin.DoesNotExist:
+        messages.error(request, "You must be an admin to access this page.")
+        return redirect('dashboard')
     
+    lessons = Lesson.objects.filter(session__is_booked=True)  # Only allocated lessons
+    
+    return render(request, 'allocated_lessons.html', {'lessons': lessons})
+
+
 @login_required
 def student_lesson_requests(request):  
     """View to display all lesson requests submitted by the logged-in student."""
@@ -250,17 +260,18 @@ def student_lesson_requests(request):
 
     return render(request, 'request_list.html', {'lesson_requests': lesson_requests})
     
-@staff_member_required
+
 @login_required
 def manage_lesson_requests(request):
     """Admin view to display and manage all lesson requests."""
     try:
-        admin = request.user.admin_profile
-    except AttributeError:
-        messages.error(request, 'You must be an admin to view this page.')
-        return redirect('dashboard')  # Redirect to an appropriate page, like the dashboard
+        # Ensure the logged-in user is a student
+        admin = Admin.objects.get(user=request.user)
+    except Admin.DoesNotExist:
+        messages.error(request, "You must be an admin to access this page.")
+        return redirect('dashboard')
 
-    # Get all lesson requests
+    # get all lesson requests
     lesson_requests = LessonRequest.objects.all().order_by('-requested_date')
     
     
@@ -268,77 +279,14 @@ def manage_lesson_requests(request):
     if status_filter != 'all':
         lesson_requests = lesson_requests.filter(status=status_filter)
 
-    return render(request, 'manage_lesson_requests.html', {'lesson_requests': lesson_requests})
+    # set 10 requests per page
+    paginator = Paginator(lesson_requests, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)   
 
-@staff_member_required
-@login_required
-def allocate_tutor(request, request_id):
-    """Admin view to allocate a tutor to a pending lesson request."""
-    lesson_request = get_object_or_404(LessonRequest, pk=request_id)
-
-    
-    requested_course = lesson_request.course
-    requested_term = lesson_request.term
-    requested_time = request.session.get('preferred_time')  # Get the preferred time from session
-
-    
-    if not requested_time:
-        messages.error(request, "Preferred time is not set. Please resubmit the lesson request.")
-        return redirect('manage_lesson_requests')
-
-    
-    available_tutors = Tutor.objects.filter(
-        expertise=requested_course.ProgrammingLanguage
-    )
-
-  
-    available_tutor_ids = TutorSession.objects.filter(
-        tutor__in=available_tutors,
-        course=requested_course,
-        term=requested_term,
-        time=requested_time,
-        is_booked=False
-    ).values_list('tutor_id', flat=True)
-
-    filtered_tutors = Tutor.objects.filter(id__in=available_tutor_ids)
-
-   
-    if request.method == 'POST':
-        form = TutorAllocationForm(request.POST, available_tutors=filtered_tutors)
-        if form.is_valid():
-            tutor = form.cleaned_data['tutor']
-
-          
-            TutorSession.objects.create(
-                tutor=tutor,
-                course=lesson_request.course,
-                term=lesson_request.term,
-                time=requested_time,  # Use preferred_time to book the session
-                is_booked=True
-            )
-            lesson_request.status = 'allocated'
-            lesson_request.save()
-            messages.success(request, 'Tutor has been successfully allocated.')
-            return redirect('manage_lesson_requests')
-    else:
-        form = TutorAllocationForm(available_tutors=filtered_tutors)
-
-    return render(request, 'allocate_tutor.html', {'lesson_request': lesson_request, 'form': form})
-
-
-@staff_member_required
-@login_required
-def reject_request(request, request_id):
-    """Admin view to reject a pending lesson request."""
-    lesson_request = get_object_or_404(LessonRequest, pk=request_id)
-
-    if request.method == 'POST':
-        lesson_request.status = 'rejected'
-        lesson_request.save()
-        messages.success(request, 'Lesson request has been rejected.')
-        return redirect('manage_lesson_requests')
-
-    return render(request, 'reject_request.html', {'lesson_request': lesson_request})
+    return render(request, 'manage_lesson_requests.html', {
+        'page_obj': page_obj,
+        'lesson_requests': page_obj.object_list,})
 
 
 """LESSON BOOKING VIEWS START"""

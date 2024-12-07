@@ -123,7 +123,6 @@ class ExpertiseForm(forms.ModelForm):
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter expertise name'}),
         }
 
-    
 
 class LessonRequestForm(forms.Form):
     """Form to request a new lesson by specifying the preferred time, language, and type of lesson."""
@@ -151,14 +150,6 @@ class LessonRequestForm(forms.Form):
         label="Preferred Time",
         widget=forms.Select(attrs={'class': 'form-control'})
     )
-
-class TutorAllocationForm(forms.Form):
-    tutor = forms.ModelChoiceField(queryset=Tutor.objects.none())  # Default to none
-
-    def __init__(self, *args, **kwargs):
-        available_tutors = kwargs.pop('available_tutors', Tutor.objects.none())
-        super(TutorAllocationForm, self).__init__(*args, **kwargs)
-        self.fields['tutor'].queryset = available_tutors
      
 
 """LESSON BOOKING FORMS START"""

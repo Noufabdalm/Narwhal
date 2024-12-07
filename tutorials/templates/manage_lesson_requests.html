@@ -2,7 +2,11 @@
 
 {% block content %}
 <div class="container mt-5">
-  <h2 class="mb-4">Manage Lesson Requests</h2>
+  <h2 class="mb-4 d-flex justify-content-between align-items-center">
+    My Lesson Requests
+    <!-- replace url with the correct one, this is for testing -->
+    <a href="{% url 'allocated_lessons' %}" class="btn btn-primary">Allocate Students</a>   
+  </h2>
 
   <form method="get" class="mb-4">
     <label for="status">Filter by Status:</label>
@@ -24,7 +28,7 @@
         <th scope="col">Term</th>
         <th scope="col">Preferred Time</th> 
         <th scope="col">Status</th>
-        <th scope="col">Actions</th>
+        <th scope="col">Late Status</th>
       </tr>
     </thead>
     <tbody>
@@ -43,21 +47,51 @@
             {% endif %}">
             {{ request.get_status_display }}
           </span>
+          <td>
+            {% if request.is_late %}
+                <span class="badge bg-danger text-white p-2">Late</span>
+            {% else %}
+                <span class="badge bg-success text-white p-2">On Time</span>
+            {% endif %}
         </td>
-        <td>
-          {% if request.status == 'pending' %}
-          <a href="{% url 'allocate_tutor' request.id %}" class="btn btn-primary btn-sm">Allocate Tutor</a>
-          <a href="{% url 'reject_request' request.id %}" class="btn btn-danger btn-sm">Reject</a>
-          {% elif request.status == 'allocated' %}
-          Allocated
-          {% else %}
-          Rejected
-          {% endif %}
-        </td>
-      </tr>
       {% endfor %}
     </tbody>
   </table>
+
+<!-- Pagination controls -->
+<nav aria-label="Page navigation">
+  <ul class="pagination">
+    {% if page_obj.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}" aria-label="Previous">
+          <span aria-hidden="true">&laquo;</span>
+        </a>
+      </li>
+    {% endif %}
+
+    {% for num in page_obj.paginator.page_range %}
+      {% if page_obj.number == num %}
+        <li class="page-item active">
+          <span class="page-link">{{ num }}</span>
+        </li>
+      {% elif num > page_obj.number|add:'-5' and num < page_obj.number|add:'5' %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}">{{ num }}</a>
+        </li>
+      {% endif %}
+    {% endfor %}
+
+    {% if page_obj.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}" aria-label="Next">
+          <span aria-hidden="true">&raquo;</span>
+        </a>
+      </li>
+    {% endif %}
+  </ul>
+</nav>
+
+
   {% else %}
   <div class="alert alert-info">
     No lesson requests available.

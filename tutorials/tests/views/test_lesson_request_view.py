@@ -1,107 +1,328 @@
 from django.test import TestCase
 from django.urls import reverse
-from django.contrib.auth import get_user_model
-from django.utils import timezone
-from tutorials.models import Student, Term, Course, LessonRequest
-from datetime import timedelta
+from django.contrib.messages import get_messages
+from tutorials.models import User, Student, Term, Course, LessonRequest, TutorSession, Admin,Tutor,Lesson
+from django.utils.timezone import now
+from datetime import timedelta, date
 
-User = get_user_model()
+class LessonRequestViewTestCase(TestCase):
 
-class LessonRequestViewTest(TestCase):
     def setUp(self):
-        # Create a user and student instance for testing
-        self.user = User.objects.create_user(username='testuser', password='testpassword')
-        self.student = Student.objects.create(user=self.user, learning_level='beginner')
+        self.url = reverse('lesson_requests')
 
-        # Create a Term instance for testing
+       
+        self.user = User.objects.create_user(
+            username='@janedoe',
+            email='janedoe@example.com',
+            password='Password123'
+        )
+        self.student = Student.objects.create(user=self.user, learning_level='beginner')
+        self.client.force_login(self.user)
+
+        
+        self.tutor_user = User.objects.create_user(
+            username='@tutorsmith',
+            email='tutorsmith@example.com',
+            password='Password123'
+        )
+        self.tutor = Tutor.objects.create(user=self.tutor_user)
+
+        
         self.term = Term.objects.create(
-            name='spring',
-            start_date=timezone.now().date() + timedelta(days=14),
-            end_date=timezone.now().date() + timedelta(days=90)
+            name="Fall 2024",
+            start_date=now().date() + timedelta(days=14),
+            end_date=now().date() + timedelta(days=100)
+        )
+        print("Term start date:", self.term.start_date)
+        print("Term end date:", self.term.end_date)
+
+       
+        self.course = Course.objects.create(
+            name="Python Basics",
+            level="Beginner",
+            price_per_hour=50.00
         )
 
-        # Create a Course instance for testing
+        # Add a TutorSession
+        self.tutor_session = TutorSession.objects.create(
+            tutor=self.tutor,
+            course=self.course,
+            term=self.term,
+            time=TutorSession.TIME_CHOICES[0][0],  
+            start_day=0,  
+            duration_minutes=60,
+            frequency='weekly',
+            is_booked=False
+        )
+
+    
+    def test_get_lesson_request_form(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'lesson_requests.html')
+        self.assertContains(response, '<form')
+
+    def test_valid_lesson_request(self):
+        form_data = {
+            'term': self.term.id,
+            'course': self.course.id,
+            'preferred_time': '09:00:00',  
+            'frequency': 'weekly',  
+        }
+        response = self.client.post(self.url, data=form_data)
+
+        
+        dashboard_url = reverse('dashboard')
+        self.assertRedirects(response, dashboard_url)
+
+       
+        lesson_request = LessonRequest.objects.filter(student=self.student).first()
+        self.assertIsNotNone(lesson_request)
+        self.assertFalse(lesson_request.is_late)
+
+    def test_late_lesson_request(self):
+    # Adjust the term start date to make the request late
+        self.term.start_date = now().date() + timedelta(days=10)
+        self.term.save()
+
+        form_data = {
+            'term': self.term.id,
+            'course': self.course.id,
+            'preferred_time': TutorSession.TIME_CHOICES[0][0],  
+            'frequency': TutorSession.FREQUENCY_CHOICES[0][0],  
+        }
+        response = self.client.post(self.url, data=form_data)
+
+       
+        dashboard_url = reverse('dashboard')
+        self.assertRedirects(response, dashboard_url)
+
+        
+        messages = list(get_messages(response.wsgi_request))
+        self.assertTrue(any("Warning: This request was submitted late and may not be prioritized." in str(message) for message in messages))
+
+      
+        lesson_request = LessonRequest.objects.filter(student=self.student).first()
+        self.assertIsNotNone(lesson_request)
+        self.assertTrue(lesson_request.is_late)
+
+
+    def test_invalid_lesson_request(self):
+        form_data = {  # Missing required fields
+            'term': '',
+            'course': '',
+            'preferred_time': '',
+            'frequency': '',
+        }
+        response = self.client.post(self.url, data=form_data)
+
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'lesson_requests.html')
+
+       
+        self.assertContains(response, 'This field is required.', count=4)
+
+    def test_non_student_submission(self):
+        other_user = User.objects.create_user(
+            username='not_student',
+            email='not_student@example.com',
+            password='password123'
+        )
+        self.client.force_login(other_user)
+
+        form_data = {
+            'term': self.term.id,
+            'course': self.course.id,
+            'preferred_time': '09:00:00',
+            'frequency': 'weekly',
+        }
+        response = self.client.post(self.url, data=form_data)
+
+        
+        dashboard_url = reverse('dashboard')
+        self.assertRedirects(response, dashboard_url)
+
+        
+        messages = list(get_messages(response.wsgi_request))
+        self.assertTrue(any("You must be a registered student" in str(message) for message in messages))
+
+class StudentLessonRequestsViewTestCase(TestCase):
+    def setUp(self):
+        # Create user and student
+        self.user = User.objects.create_user(
+            username='@janedoe',
+            email='janedoe@example.com',
+            password='Password123'
+        )
+        self.student = Student.objects.create(user=self.user, learning_level='beginner')
+        self.client.force_login(self.user)
+
+        # Set up term and course
+        self.term = Term.objects.create(
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 6, 1),
+        )
         self.course = Course.objects.create(
-            name='Python Basics',
-            description='Learn the basics of Python programming.',
+            name="Python Basics",
+            level="Beginner",
+            price_per_hour=50.00,
+        )
+
+        
+        for i in range(3):
+            LessonRequest.objects.create(
+                student=self.student,
+                course=self.course,
+                term=self.term,
+                status='pending',
+                requested_date=date(2024, 1, i + 1),
+            )
+
+        self.url = reverse('request_list')
+
+    def test_view_as_non_student(self):
+        # Log in as a non-student user
+        other_user = User.objects.create_user(
+            username='not_student',
+            email='not_student@example.com',
+            password='password123'
+        )
+        self.client.force_login(other_user)
+
+        response = self.client.get(self.url, follow=True)
+        dashboard_url = reverse('dashboard')
+
+        
+        self.assertRedirects(response, dashboard_url)
+        messages = list(get_messages(response.wsgi_request))
+        self.assertTrue(any("You must be a student to view this page." in str(message) for message in messages))
+
+    def test_sort_by_valid_field(self):
+        response = self.client.get(self.url, {'sort': 'term'})
+        self.assertEqual(response.status_code, 200)
+        lesson_requests = response.context['lesson_requests']
+        self.assertEqual(lesson_requests[0].term, self.term) 
+
+    def test_sort_by_invalid_field(self):
+        response = self.client.get(self.url, {'sort': 'invalid_field'})
+        self.assertEqual(response.status_code, 200)
+        lesson_requests = response.context['lesson_requests']
+        self.assertEqual(lesson_requests.count(), 3)  
+
+    def test_view_with_default_sorting(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        lesson_requests = response.context['lesson_requests']
+        self.assertEqual(lesson_requests.count(), 3)  
+
+
+class ManageLessonRequestsViewTestCase(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='@janedoe',
+            email='janedoe@example.com',
+            password='Password123'
+        )
+        self.admin = Admin.objects.create(user=self.user)
+
+        self.student_user = User.objects.create_user(
+            username='@charlie',
+            email='charlie@example.com',
+            password='Password123'
+        )
+        self.student = Student.objects.create(user=self.student_user)
+
+        self.term = Term.objects.create(
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 6, 1)
+        )
+        self.course = Course.objects.create(
+            name='Math 101',
             level='beginner',
             price_per_hour=20.0
         )
 
-        # Log in the user
-        self.client.login(username='testuser', password='testpassword')
+        frequency_choice = TutorSession.FREQUENCY_CHOICES[0][0]  
+        duration_choice = TutorSession.DURATION_CHOICES[0][0]  
+        for i in range(15):
+            LessonRequest.objects.create(
+                student=self.student,
+                course=self.course,
+                frequency=frequency_choice,
+                duration_minutes=duration_choice,
+                term=self.term,
+                status='pending'
+            )
 
-    def test_get_lesson_request_view(self):
-        # Test GET request to display the lesson request form
-        response = self.client.get(reverse('lesson_requests'))
+        self.url = reverse('manage_lesson_requests')
+
+    def test_manage_lesson_requests_url(self):
+        self.assertEqual(self.url, '/manage-lesson-requests/')
+
+    def test_get_manage_lesson_requests_as_admin(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'lesson_requests.html')
-        self.assertContains(response, 'Learning Level')
-        self.assertContains(response, 'Preferred Time')
+        self.assertTemplateUsed(response, 'manage_lesson_requests.html')
+        page_obj = response.context['page_obj']
+        self.assertTrue(hasattr(page_obj, 'object_list'))
+        self.assertEqual(len(page_obj.object_list), 10)  # Pagination check
 
-    def test_post_lesson_request_view_valid_data(self):
-        # Test POST request with valid data
-        response = self.client.post(reverse('lesson_requests'), {
-            'term': self.term.id,
-            'course': self.course.id,
-            'preferred_time': '09:00',
-            'frequency': 'weekly'
-        })
-        
-        # Check if the lesson request was created
-        self.assertEqual(LessonRequest.objects.count(), 1)
-        lesson_request = LessonRequest.objects.first()
-        self.assertEqual(lesson_request.student, self.student)
-        self.assertEqual(lesson_request.course, self.course)
-        self.assertEqual(lesson_request.term, self.term)
-        self.assertEqual(lesson_request.status, 'pending')
+    def test_get_manage_lesson_requests_with_filter(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.url, {'status': 'pending'})
+        self.assertEqual(response.status_code, 200)
+        page_obj = response.context['page_obj']
+        self.assertEqual(len(page_obj.object_list), 10)  
 
-        # Check if the response redirects to the dashboard
-        self.assertRedirects(response, reverse('dashboard'))
-
-    def test_post_lesson_request_view_invalid_student(self):
-        # Log out the student and create a new user who is not a student
-        self.client.logout()
-        new_user = User.objects.create_user(username='newuser', password='newpassword')
-        self.client.login(username='newuser', password='newpassword')
-
-        # Test POST request with valid data but user is not a student
-        response = self.client.post(reverse('lesson_requests'), {
-            'term': self.term.id,
-            'course': self.course.id,
-            'preferred_time': '09:00',
-            'frequency': 'weekly'
-        })
-
-        # Check that no lesson request was created
-        self.assertEqual(LessonRequest.objects.count(), 0)
-
-        # Check for the error message
-        messages = list(response.context['messages'])
+    def test_get_manage_lesson_requests_as_non_admin(self):
+        other_user = User.objects.create_user(username='@notadmin', password='Password123')
+        self.client.force_login(other_user)
+        response = self.client.get(self.url, follow=True)
+        redirect_url = reverse('dashboard')
+        self.assertRedirects(response, redirect_url)
+        messages = list(get_messages(response.wsgi_request))
         self.assertEqual(len(messages), 1)
-        self.assertEqual(str(messages[0]), "You must be a registered student to request a lesson.")
+        self.assertEqual(str(messages[0]), 'You must be an admin to access this page.')
 
-    def test_post_lesson_request_view_late_request(self):
-        # Create a term that has already started to simulate a late request
-        late_term = Term.objects.create(
-            name='autumn',
-            start_date=timezone.now().date() - timedelta(days=7),
-            end_date=timezone.now().date() + timedelta(days=60)
-        )
+    def test_get_manage_lesson_requests_not_logged_in(self):
+        expected_redirect_url = f'/log_in/?next={self.url}'
+        response = self.client.get(self.url, follow=True)
+        self.assertRedirects(response, expected_redirect_url)
 
-        # Test POST request with a late term
-        response = self.client.post(reverse('lesson_requests'), {
-            'term': late_term.id,
-            'course': self.course.id,
-            'preferred_time': '09:00',
-            'frequency': 'weekly'
-        })
 
-        # Check if the lesson request was created
-        self.assertEqual(LessonRequest.objects.count(), 1)
-        lesson_request = LessonRequest.objects.first()
-        self.assertTrue(lesson_request)
-        
-        # Check if a warning message is displayed
-        messages = list(response.context['messages'])
-        self.assertTrue(any("Warning: This request was submitted late" in str(message) for message in messages))
+# class AllocatedLessonsViewTestCase(TestCase):
+#     def setUp(self):
+#         self.admin_user = User.objects.create_user(username='admin2', password='password123')
+#         self.non_admin_user = User.objects.create_user(username='nonadmin', password='password123')
+#         Admin.objects.create(user=self.admin_user)
+
+#         
+#         self.allocated_session = TutorSession.objects.create(is_booked=True)
+#         self.unallocated_session = TutorSession.objects.create(is_booked=False)
+
+#         self.allocated_lesson = Lesson.objects.create(session=self.allocated_session)
+#         self.unallocated_lesson = Lesson.objects.create(session=self.unallocated_session)
+
+#         self.url = reverse('allocated_lessons')        
+#     def test_allocated_lessons_admin_access(self):
+#         # Create an admin user
+#         admin_user = User.objects.create_user(username='admin', password='password123')
+#         Admin.objects.create(user=admin_user)
+#         self.client.force_login(admin_user)
+
+#         
+#         lesson = Lesson.objects.create(session=TutorSession.objects.create(is_booked=True))
+#         unallocated_lesson = Lesson.objects.create(session=TutorSession.objects.create(is_booked=False))
+
+#         response = self.client.get(reverse('allocated_lessons'))
+
+#         
+#         self.assertEqual(response.status_code, 200)
+#         self.assertTemplateUsed(response, 'allocated_lessons.html')
+
+#       
+#         lessons = response.context['lessons']
+#         self.assertIn(lesson, lessons)
+#         self.assertNotIn(unallocated_lesson, lessons)

@@ -27,6 +27,7 @@
             <th scope="col">Frequency</th>
             <th scope="col">Requested Date</th>
             <th scope="col">Status</th>
+            <th scope="col">Late Status</th>
           </tr>
         </thead>
         <tbody>
@@ -46,6 +47,13 @@
                 {{ request.get_status_display }}
               </span>
               </td>
+              <td>
+                {% if request.is_late %}
+                    <span class="badge bg-danger text-white p-2">Late</span>
+                {% else %}
+                    <span class="badge bg-success text-white p-2">On Time</span>
+                {% endif %}
+            </td>
             </tr>
           {% endfor %}
         </tbody>
