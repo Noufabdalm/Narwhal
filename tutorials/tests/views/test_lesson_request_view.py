@@ -179,7 +179,7 @@ class StudentLessonRequestsViewTestCase(TestCase):
                 requested_date=date(2024, 1, i + 1),
             )
 
-        self.url = reverse('request_list')
+        self.url = reverse('student_lesson_requests')
 
     def test_view_as_non_student(self):
         # Log in as a non-student user

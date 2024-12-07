@@ -234,8 +234,15 @@ def allocated_lessons_view(request):
         return redirect('dashboard')
     
     lessons = Lesson.objects.filter(session__is_booked=True)  # Only allocated lessons
-    
-    return render(request, 'allocated_lessons.html', {'lessons': lessons})
+
+    # set 10 requests per page
+    paginator = Paginator(lessons, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)   
+
+    return render(request, 'allocated_lessons.html', {
+        'page_obj': page_obj,
+        'lesson_requests': page_obj.object_list,})
 
 
 @login_required
@@ -264,7 +271,14 @@ def student_lesson_requests(request):
     else:
         lesson_requests = LessonRequest.objects.filter(student=student).order_by('-id')  # Default ordering
 
-    return render(request, 'request_list.html', {'lesson_requests': lesson_requests})
+    paginator = Paginator(lesson_requests, 10)  # Show 10 items per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'student_lesson_requests.html', {
+        'page_obj': page_obj,
+        'lesson_requests': page_obj.object_list,
+    })
     
 
 @login_required
@@ -277,13 +291,23 @@ def manage_lesson_requests(request):
         messages.error(request, "You must be an admin to access this page.")
         return redirect('dashboard')
 
-    # get all lesson requests
-    lesson_requests = LessonRequest.objects.all().order_by('-requested_date')
-    
-    
-    status_filter = request.GET.get('status', 'all')
-    if status_filter != 'all':
-        lesson_requests = lesson_requests.filter(status=status_filter)
+
+    sort_by = request.GET.get('sort', 'requested_date')  # Default sort by requested_date
+
+    allowed_sort_fields = {
+        'requested_date': 'requested_date',
+        'requested_date_desc': '-requested_date',
+        'term': 'term__start_date',
+        'term_desc': '-term__start_date',
+        'status': 'status',
+        'late_status': '-is_late',  # Sort by late status in descending order
+        'late_status_asc': 'is_late', 
+    }
+
+    if sort_by in allowed_sort_fields:
+        lesson_requests = LessonRequest.objects.all().order_by(allowed_sort_fields[sort_by])
+    else:
+        lesson_requests = LessonRequest.objects.all().order_by('-id')  # Default ordering
 
     # set 10 requests per page
     paginator = Paginator(lesson_requests, 10)
@@ -438,14 +462,6 @@ class ConfirmLessonBookingView(FormView):
 """LESSON BOOKING VIEWS END"""
 
 
-
-@staff_member_required
-def late_requests_view(request):
-    """View to display all late lesson requests."""
-    late_requests = LessonRequest.objects.filter(is_late=True, status='pending')
-    return render(request, 'late_requests.html', {'late_requests': late_requests})
-
-
 def student_list(request):
     search_query = request.GET.get('search', '')
     learning_level = request.GET.get('learning_level', '')
@@ -492,17 +508,6 @@ def student_details(request, student_id):
 
     return render(request, 'student_detail.html', context)
 
-
-@login_required
-def student_lesson_requests(request):
-    """View to display all lesson requests submitted by the logged-in student."""
-    try:
-        student = request.user.student_profile
-    except AttributeError:
-        return render(request, 'error.html', {'message': 'You must be a student to view this page.'})
-
-    lesson_requests = LessonRequest.objects.filter(student=student).order_by('-id')
-    return render(request, 'request_list.html', {'lesson_requests': lesson_requests})
 
 def tutor_list(request):
     search_query = request.GET.get('search', '').strip()
