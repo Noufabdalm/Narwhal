@@ -365,12 +365,15 @@ class SelectSessionView(FormView):
 
         # Get the lesson request and filter sessions
         lesson_request = LessonRequest.objects.get(id=request_id)
+
+        # Filter sessions based on lesson request and tutor expertise
         sessions = TutorSession.objects.filter(
-            duration_minutes = lesson_request.duration_minutes,
-            frequency = lesson_request.frequency,
-            term=lesson_request.term,
-            is_booked=False
-        )
+        duration_minutes=lesson_request.duration_minutes,
+        frequency=lesson_request.frequency,
+        term=lesson_request.term,
+        is_booked=False,
+        tutor__expertise=lesson_request.course.ProgrammingLanguage
+        ).distinct()
 
         # Dynamically update the queryset for the session field
         form = super().get_form()
