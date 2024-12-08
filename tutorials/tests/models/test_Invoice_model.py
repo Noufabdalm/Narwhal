@@ -54,9 +54,8 @@ class InvoiceModelTest(TestCase):
 
         # Create a tutor session
         cls.tutor_session = TutorSession.objects.create(
-            course=cls.course,
-            term=cls.term,
             tutor=cls.tutor,
+            term=cls.term,
             start_date=date(2025, 1, 10),
             start_day=0,  # Monday
             time="09:00",

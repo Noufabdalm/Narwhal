@@ -10,6 +10,7 @@
     <form method="post">
         {% csrf_token %}
         <button type="submit" class="btn btn-success">Confirm Booking</button>
+        <a href="{% url 'select_session' %}" class="btn btn-secondary">Previous</a>
     </form>
 </div>
 {% endblock %}
