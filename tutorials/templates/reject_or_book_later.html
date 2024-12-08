@@ -7,7 +7,9 @@
     <label for="rejection_reason">Reason for Rejection:</label><br>
     <textarea name="rejection_reason" id="rejection_reason" rows="4" cols="50"></textarea><br><br>
 
+    <a href="{% url 'select_request' %}" class="btn btn-secondary">Previous</a>
     <button type="submit" name="reject_request" class="btn btn-danger">Reject Request</button>
     <button type="submit" name="book_later" class="btn btn-secondary">Book Later</button>
+    
 </form>
 {% endblock %}
