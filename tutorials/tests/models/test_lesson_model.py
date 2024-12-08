@@ -51,7 +51,6 @@ class LessonModelTestCase(TestCase):
         # Create TutorSession
         self.session = TutorSession.objects.create(
             tutor=self.tutor,
-            course=self.course,
             time=time(10, 0),
             start_day=0,
             term=self.term,

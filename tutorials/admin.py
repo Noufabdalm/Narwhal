@@ -66,8 +66,8 @@ class TermAdmin(admin.ModelAdmin):
 @admin.register(TutorSession)
 class TutorSessionAdmin(admin.ModelAdmin):
     """Admin interface for TutorSession model."""
-    list_display = ('tutor', 'course', 'term', 'time', 'start_date','end_date', 'is_booked', 'frequency', 'duration_minutes')
-    search_fields = ('tutor__user__username', 'course__name', 'term__name')
+    list_display = ('tutor', 'term', 'time', 'start_date','end_date', 'is_booked', 'frequency', 'duration_minutes')
+    search_fields = ('tutor__user__username', 'term__name')
     list_filter = ('is_booked', 'frequency', 'duration_minutes', 'term')
     ordering = ('term', 'start_date', 'time')
 

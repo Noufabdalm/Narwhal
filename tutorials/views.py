@@ -349,7 +349,7 @@ class SelectRequestView(FormView):
     def form_valid(self, form):
         lesson_request = form.cleaned_data['request']
         self.request.session['request_id'] = lesson_request.id
-        return redirect(reverse("select_session"))  # Redirect to the next step
+        return redirect(reverse("select_session")) 
 
 
 # Step 3: Select Session
@@ -362,21 +362,36 @@ class SelectSessionView(FormView):
         if not request_id:
             messages.error(self.request, "Please select a lesson request first.")
             return redirect(reverse("select_request"))
-        form = super().get_form()
+
+        # Get the lesson request and filter sessions
         lesson_request = LessonRequest.objects.get(id=request_id)
-        form.fields['session'].queryset = TutorSession.objects.filter(
-            course=lesson_request.course,
-            term=lesson_request.term,
-            is_booked=False
-        )
+
+        # Filter sessions based on lesson request and tutor expertise
+        sessions = TutorSession.objects.filter(
+        duration_minutes=lesson_request.duration_minutes,
+        frequency=lesson_request.frequency,
+        term=lesson_request.term,
+        is_booked=False,
+        tutor__expertise=lesson_request.course.ProgrammingLanguage
+        ).distinct()
+
+        # Dynamically update the queryset for the session field
+        form = super().get_form()
+        form.fields['session'].queryset = sessions
         return form
 
     def form_valid(self, form):
-        session = form.cleaned_data['session']
+        session = form.cleaned_data.get('session')
+
+        if not session:
+            messages.error(self.request, "No session selected. Please choose an action.")
+            return redirect(reverse("reject_or_book_later"))
+        
+       
         self.request.session['session_id'] = session.id
         return redirect(reverse("confirm_booking"))
 
-
+#Step 4 Confirm Booking (If there is a session)
 class ConfirmLessonBookingView(FormView):
     template_name = "confirm_booking.html"
     form_class = forms.Form  # No fields needed, just confirmation
@@ -395,7 +410,7 @@ class ConfirmLessonBookingView(FormView):
         if session_id:
             tutor_session = TutorSession.objects.get(id=session_id)
             context['session_details'] = (
-                f"{tutor_session.course.name} - {tutor_session.tutor.user.get_full_name()} "
+                f"{lesson_request.course.name} - {tutor_session.tutor.user.get_full_name()} "
                 f"on {tutor_session.start_date}"
             )
             context['due_date'] = tutor_session.start_date  #Assuming start_date is the due dat
@@ -407,10 +422,12 @@ class ConfirmLessonBookingView(FormView):
 
     def calculate_invoice_amount(self):
         """Helper method to calculate the invoice amount."""
+        request_id = self.request.session.get('request_id')
+        lesson_request = LessonRequest.objects.get(id=request_id)
         session_id = self.request.session.get('session_id')
-        if session_id:
+        if session_id and lesson_request:
             tutor_session = TutorSession.objects.get(id=session_id)
-            return tutor_session.calculate_term_cost()  # Assuming `calculate_term_cost` is defined in TutorSession
+            return tutor_session.calculate_term_cost(lesson_request.course)  # Assuming `calculate_term_cost` is defined in TutorSession
         return 0
 
     def form_valid(self, form):
@@ -431,7 +448,7 @@ class ConfirmLessonBookingView(FormView):
         booked_lesson = Lesson.objects.create(
             student=student,
             tutor=session.tutor,
-            course=session.course,
+            course=lesson_request.course,
             start_day=session.start_day,
             start_date=session.start_date,
             end_date=session.end_date,
@@ -458,6 +475,44 @@ class ConfirmLessonBookingView(FormView):
         messages.success(self.request, f"Lesson successfully booked. Invoice amount: ${invoice.total_amount:.2f}")
         return redirect(reverse("dashboard"))
 
+#Step 4 Reject Booking or snooze it for later (If there is no session)
+class RejectOrBookLaterView(FormView):
+    template_name = "reject_or_book_later.html"
+    form_class = forms.Form 
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        request_id = self.request.session.get('request_id')
+
+        if request_id:
+            lesson_request = LessonRequest.objects.get(id=request_id)
+            context['request_details'] = f"{lesson_request.course.name} ({lesson_request.term.name})"
+        
+        return context
+
+    def form_valid(self, form):
+      
+        if "reject_request" in self.request.POST:  
+            return self.reject_request()
+        elif "book_later" in self.request.POST: 
+            return self.book_later()
+
+    def reject_request(self):
+ 
+        request_id = self.request.session.get('request_id')
+        if request_id:
+            lesson_request = LessonRequest.objects.get(id=request_id)
+            lesson_request.status = "rejected"
+            lesson_request.rejection_reason = self.request.POST.get("rejection_reason", "No reason provided")
+            lesson_request.save()
+            messages.success(self.request, "The request has been rejected.")
+        
+        return redirect(reverse("dashboard"))
+
+    def book_later(self):
+        #This needs to redirect to lesson requests view 
+        messages.info(self.request, "The request has been marked for booking later.")
+        return redirect(reverse("dashboard"))
 
     
 """LESSON BOOKING VIEWS END"""

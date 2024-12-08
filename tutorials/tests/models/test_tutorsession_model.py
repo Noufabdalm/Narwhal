@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from tutorials.models import TutorSession, Tutor, Course, Term, Expertise, User
 
 class TutorSessionModelTestCase(TestCase):
-    """Unit tests for the TutorSession model."""
+    
 
     def setUp(self):
         self.term = Term.objects.create(
@@ -30,7 +30,6 @@ class TutorSessionModelTestCase(TestCase):
         )
         self.session = TutorSession.objects.create(
             tutor=self.tutor,
-            course=self.course,
             time=time(10, 0),
             term=self.term,
             start_day=4,  # Friday
@@ -57,14 +56,13 @@ class TutorSessionModelTestCase(TestCase):
     def test_calculate_term_cost(self):
         """Test term cost calculation based on session details."""
         expected_cost = 12 * (20.0 * (60 / 60.0))  
-        self.assertEqual(self.session.calculate_term_cost(), expected_cost)
+        self.assertEqual(self.session.calculate_term_cost(self.course), expected_cost)
 
     def test_duplicate_session_is_invalid(self):
         """Test that creating a duplicate TutorSession raises a ValidationError."""
         with self.assertRaises(ValidationError):
             duplicate_session = TutorSession(
                 tutor=self.tutor,
-                course=self.course,
                 time=self.session.time,
                 term=self.term,
                 start_day=self.session.start_day
@@ -83,7 +81,6 @@ class TutorSessionModelTestCase(TestCase):
         """Test the save method calculates and sets start and end dates."""
         session = TutorSession.objects.create(
             tutor=self.tutor,
-            course=self.course,
             time=time(11, 0),
             term=self.term,
             start_day=3,  # Thursday
@@ -95,4 +92,4 @@ class TutorSessionModelTestCase(TestCase):
 
     def test_str_method(self):
         """Test the string representation of a TutorSession instance."""
-        self.assertEqual(str(self.session), "@tutor1 - Python for Beginners (Available)")
+        self.assertEqual(str(self.session), "@tutor1 -(Available)")

@@ -196,7 +196,7 @@ class TutorSession(models.Model):
 
 
     tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name="Tutor_Sessions")
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="Course_Sessions")
+    #course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="Course_Sessions")
     time = models.TimeField(choices=TIME_CHOICES)
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='Term_Sessions')
     start_day = models.IntegerField(choices=WEEKDAY_CHOICES, default=0)
@@ -236,24 +236,21 @@ class TutorSession(models.Model):
             current_date += timedelta(days=session_interval)
 
         return current_date
-
-
-    def calculate_term_cost(self):
+    
+    def calculate_term_cost(self, course):
         lessons_per_term = 12 if self.frequency == 'weekly' else 6
         # Convert all components to Decimal
         duration_in_hours = Decimal(self.duration_minutes) / Decimal(60)  # Convert minutes to hours as Decimal
-        price_per_hour = Decimal(self.course.price_per_hour)  # Ensure course price per hour is a Decimal
+        price_per_hour = Decimal(course.price_per_hour)  # Ensure course price per hour is a Decimal
         lessons = Decimal(lessons_per_term)  # Convert lessons_per_term to Decimal
-
         # Perform the calculation
         total_cost = duration_in_hours * price_per_hour * lessons
         return total_cost
-    
+
     def clean(self):
         # Check for duplicate sessions
         if TutorSession.objects.filter(
             tutor=self.tutor,
-            course=self.course,
             time=self.time,
             start_date=self.start_date,
             term=self.term,
@@ -271,7 +268,7 @@ class TutorSession(models.Model):
 
     def __str__(self):
         status = "Booked" if self.is_booked else "Available"
-        return f"{self.tutor.user.username} - {self.course.name} ({status})"
+        return f"{self.tutor.user.username} -({status})"
 
 
 class LessonRequest(models.Model):
@@ -294,7 +291,7 @@ class LessonRequest(models.Model):
     # Flag to determine if the request is late or not
     is_late = models.BooleanField(default=False)
     requested_date = models.DateField(default=datetime.date.today)
-    
+    rejection_reason = models.TextField(null=True, blank= True)
 
 
     def __str__(self):
@@ -354,12 +351,9 @@ class Lesson(models.Model):
         related_name='allocated_lesson'
     )
     rollover = models.BooleanField(default=True) # Student is going to take the model next term unless a change or cancellation is requested
-    
 
     def clean(self):
         super().clean()
-        if self.course != self.session.course:
-            raise ValidationError("The course of the lesson must match the course of the tutor session.")
         if self.course != self.request.course:
             raise ValidationError("The course of the lesson must match the course of the lesson request.")
 
