@@ -164,7 +164,7 @@ class SessionSelectionForm(forms.Form):
         queryset=TutorSession.objects.none(),  # Queryset populated dynamically
         label="Select a Session",
         widget=forms.Select(attrs={'class': 'form-control'}),
-        required=True,
+        required=False,
     )
 
 """LESSON BOOKING FORMS END"""
