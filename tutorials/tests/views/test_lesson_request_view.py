@@ -10,7 +10,7 @@ class LessonRequestViewTestCase(TestCase):
     def setUp(self):
         self.url = reverse('lesson_requests')
 
-       
+        # Create user and student
         self.user = User.objects.create_user(
             username='@janedoe',
             email='janedoe@example.com',
@@ -19,43 +19,36 @@ class LessonRequestViewTestCase(TestCase):
         self.student = Student.objects.create(user=self.user, learning_level='beginner')
         self.client.force_login(self.user)
 
-        
+        # Create tutor and term
         self.tutor_user = User.objects.create_user(
             username='@tutorsmith',
             email='tutorsmith@example.com',
             password='Password123'
         )
         self.tutor = Tutor.objects.create(user=self.tutor_user)
-
-        
         self.term = Term.objects.create(
-            name="Fall 2024",
+            name="autumn",
             start_date=now().date() + timedelta(days=14),
             end_date=now().date() + timedelta(days=100)
         )
-        print("Term start date:", self.term.start_date)
-        print("Term end date:", self.term.end_date)
-
-       
         self.course = Course.objects.create(
             name="Python Basics",
             level="Beginner",
             price_per_hour=50.00
         )
 
-        # Add a TutorSession
+        # Create a TutorSession
         self.tutor_session = TutorSession.objects.create(
             tutor=self.tutor,
             course=self.course,
             term=self.term,
-            time=TutorSession.TIME_CHOICES[0][0],  
-            start_day=0,  
+            time=TutorSession.TIME_CHOICES[0][0],
+            start_day=0,
             duration_minutes=60,
             frequency='weekly',
             is_booked=False
         )
 
-    
     def test_get_lesson_request_form(self):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
@@ -66,61 +59,58 @@ class LessonRequestViewTestCase(TestCase):
         form_data = {
             'term': self.term.id,
             'course': self.course.id,
-            'preferred_time': '09:00:00',  
-            'frequency': 'weekly',  
+            'duration_minutes': 60,  # Updated field
+            'frequency': 'weekly',
         }
         response = self.client.post(self.url, data=form_data)
 
-        
+        # Check redirection
         dashboard_url = reverse('dashboard')
         self.assertRedirects(response, dashboard_url)
 
-       
+        # Verify lesson request creation
         lesson_request = LessonRequest.objects.filter(student=self.student).first()
         self.assertIsNotNone(lesson_request)
         self.assertFalse(lesson_request.is_late)
 
     def test_late_lesson_request(self):
-    # Adjust the term start date to make the request late
+        # Adjust term start date to make the request late
         self.term.start_date = now().date() + timedelta(days=10)
         self.term.save()
 
         form_data = {
             'term': self.term.id,
             'course': self.course.id,
-            'preferred_time': TutorSession.TIME_CHOICES[0][0],  
-            'frequency': TutorSession.FREQUENCY_CHOICES[0][0],  
+            'duration_minutes': 60,  # Updated field
+            'frequency': 'weekly',
         }
         response = self.client.post(self.url, data=form_data)
 
-       
+        # Check redirection
         dashboard_url = reverse('dashboard')
         self.assertRedirects(response, dashboard_url)
 
-        
+        # Check warning message
         messages = list(get_messages(response.wsgi_request))
         self.assertTrue(any("Warning: This request was submitted late and may not be prioritized." in str(message) for message in messages))
 
-      
+        # Verify `is_late` is True
         lesson_request = LessonRequest.objects.filter(student=self.student).first()
         self.assertIsNotNone(lesson_request)
         self.assertTrue(lesson_request.is_late)
-
 
     def test_invalid_lesson_request(self):
         form_data = {  # Missing required fields
             'term': '',
             'course': '',
-            'preferred_time': '',
+            'duration_minutes': '',
             'frequency': '',
         }
         response = self.client.post(self.url, data=form_data)
 
-        
+        # Assert re-rendering of the form with errors
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'lesson_requests.html')
-
-       
         self.assertContains(response, 'This field is required.', count=4)
 
     def test_non_student_submission(self):
@@ -134,16 +124,16 @@ class LessonRequestViewTestCase(TestCase):
         form_data = {
             'term': self.term.id,
             'course': self.course.id,
-            'preferred_time': '09:00:00',
+            'duration_minutes': 60,  # Updated field
             'frequency': 'weekly',
         }
         response = self.client.post(self.url, data=form_data)
 
-        
+        # Check redirection
         dashboard_url = reverse('dashboard')
         self.assertRedirects(response, dashboard_url)
 
-        
+        # Check error message
         messages = list(get_messages(response.wsgi_request))
         self.assertTrue(any("You must be a registered student" in str(message) for message in messages))
 
@@ -160,8 +150,9 @@ class StudentLessonRequestsViewTestCase(TestCase):
 
         # Set up term and course
         self.term = Term.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 6, 1),
+            name="autumn",
+            start_date=now().date() + timedelta(days=14),
+            end_date=now().date() + timedelta(days=100)
         )
         self.course = Course.objects.create(
             name="Python Basics",
@@ -234,8 +225,9 @@ class ManageLessonRequestsViewTestCase(TestCase):
         self.student = Student.objects.create(user=self.student_user)
 
         self.term = Term.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 6, 1)
+            name="autumn",
+            start_date=now().date() + timedelta(days=14),
+            end_date=now().date() + timedelta(days=100)
         )
         self.course = Course.objects.create(
             name='Math 101',
