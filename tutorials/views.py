@@ -182,7 +182,7 @@ class LessonRequestView(LoginRequiredMixin, FormView):
         if form.is_valid():
             term = form.cleaned_data['term']
             course = form.cleaned_data['course']
-            preferred_time = form.cleaned_data['preferred_time']
+            duration_minutes = form.cleaned_data['duration_minutes']
             frequency = form.cleaned_data['frequency']
 
             try:
@@ -199,6 +199,7 @@ class LessonRequestView(LoginRequiredMixin, FormView):
             lesson_request = LessonRequest.objects.create(
                 student=student,
                 frequency=frequency,
+                duration_minutes=duration_minutes,
                 course=course,
                 term=term,
                 status='pending',

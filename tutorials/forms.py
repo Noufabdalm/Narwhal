@@ -145,9 +145,9 @@ class LessonRequestForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-control'})
     )
 
-    preferred_time = forms.ChoiceField(
-        choices=TutorSession.TIME_CHOICES,
-        label="Preferred Time",
+    duration_minutes = forms.ChoiceField(
+        choices=TutorSession.DURATION_CHOICES,
+        label="Duration Minutes",
         widget=forms.Select(attrs={'class': 'form-control'})
     )
      
