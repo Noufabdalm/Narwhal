@@ -108,16 +108,31 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
             password=self.cleaned_data.get('new_password'),
         )
         return user
-    
+
+
+class CourseForm(forms.ModelForm):
+    class Meta:
+        model = Course
+        fields = ['name', 'description', 'level', 'price_per_hour', 'ProgrammingLanguage']
+
+class ExpertiseForm(forms.ModelForm):
+    class Meta:
+        model = Expertise
+        fields = ['name']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter expertise name'}),
+        }
+
 
 class LessonRequestForm(forms.Form):
     """Form to request a new lesson by specifying the preferred time, language, and type of lesson."""
+    
     course = forms.ModelChoiceField(
         queryset=Course.objects.all(),  
         empty_label="Select a Course",
-        widget=forms.Select(attrs={'class': 'form-control'})  
+        widget=forms.Select(attrs={'class': 'form-control'})
     )
-
+    
     frequency = forms.ChoiceField(
         choices=TutorSession.FREQUENCY_CHOICES,
         label="Frequency",
@@ -130,14 +145,12 @@ class LessonRequestForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-control'})
     )
 
-    preferred_time = forms.ChoiceField(
-        choices=TutorSession.TIME_CHOICES,
-        label="Preferred Time",
+    duration_minutes = forms.ChoiceField(
+        choices=TutorSession.DURATION_CHOICES,
+        label="Duration Minutes",
         widget=forms.Select(attrs={'class': 'form-control'})
     )
-
-
-
+     
 
 """LESSON BOOKING FORMS START"""
 
@@ -149,7 +162,6 @@ class StudentSelectionForm(forms.Form):
         required=True,
     )
 
-
 class RequestSelectionForm(forms.Form):
     request = forms.ModelChoiceField(
         queryset=LessonRequest.objects.none(),  # Queryset populated dynamically
@@ -157,7 +169,6 @@ class RequestSelectionForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-control'}),
         required=True,
     )
-
 
 class SessionSelectionForm(forms.Form):
     session = forms.ModelChoiceField(

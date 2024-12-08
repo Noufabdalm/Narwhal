@@ -13,11 +13,12 @@ from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm, Lesso
 from tutorials.helpers import login_prohibited
 from django.utils import timezone
 from datetime import timedelta
+from django.core.paginator import Paginator
 
 from django.contrib.admin.views.decorators import staff_member_required
 
 
-from .models import Student, LessonRequest, Term, TutorSession, Expertise,Lesson, Invoice , Tutor, Course
+from .models import Student, LessonRequest,Admin, TutorSession, Expertise,Lesson, Invoice , Tutor, Course
 from .forms import CourseForm, ExpertiseForm
 from django.db.models import Prefetch
 from django.core.paginator import Paginator
@@ -29,6 +30,12 @@ def dashboard(request):
     """Display the current user's dashboard."""
 
     current_user = request.user
+    # Check if the user is an admin
+    is_admin = hasattr(current_user, 'admin_profile')
+
+    context = {
+        'is_admin': is_admin,
+    }
     return render(request, 'dashboard.html', {'user': current_user})
 
 
@@ -163,7 +170,7 @@ class SignUpView(LoginProhibitedMixin, FormView):
 
     def get_success_url(self):
         return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
-    
+
 
 class LessonRequestView(LoginRequiredMixin, FormView): 
     form_class = LessonRequestForm  
@@ -173,10 +180,9 @@ class LessonRequestView(LoginRequiredMixin, FormView):
     def post(self, request, *args, **kwargs):
         form = self.form_class(request.POST)
         if form.is_valid():
-            # Extract the cleaned data
             term = form.cleaned_data['term']
             course = form.cleaned_data['course']
-            preferred_time = form.cleaned_data['preferred_time']
+            duration_minutes = form.cleaned_data['duration_minutes']
             frequency = form.cleaned_data['frequency']
 
             try:
@@ -190,19 +196,25 @@ class LessonRequestView(LoginRequiredMixin, FormView):
             two_weeks_before = term.start_date - timedelta(weeks=2)
             is_late = timezone.now().date() > two_weeks_before
 
-            # Create the LessonRequest instance
             lesson_request = LessonRequest.objects.create(
                 student=student,
                 frequency=frequency,
+                duration_minutes=duration_minutes,
                 course=course,
                 term=term,
                 status='pending',
+                is_late=is_late,
             )
+            
+            #Set a warning message if the request is late
+            if is_late:
+                messages.warning(request, "Warning: This request was submitted late and may not be prioritized.")
+
 
             messages.success(request, "Your lesson request has been submitted successfully!")
             return redirect(self.success_url)
 
-        # If form is not valid, re-render the form with errors
+    
         return render(request, self.template_name, {'form': form})
 
     def get(self, request, *args, **kwargs):
@@ -212,6 +224,101 @@ class LessonRequestView(LoginRequiredMixin, FormView):
         form = self.form_class()
         return render(request, self.template_name, {'form': form})
     
+
+def allocated_lessons_view(request):
+    """Admin view to display all allocated lessons."""
+    try:
+        # Ensure the logged-in user is a student
+        admin = Admin.objects.get(user=request.user)
+    except Admin.DoesNotExist:
+        messages.error(request, "You must be an admin to access this page.")
+        return redirect('dashboard')
+    
+    lessons = Lesson.objects.filter(session__is_booked=True)  # Only allocated lessons
+
+    # set 10 requests per page
+    paginator = Paginator(lessons, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)   
+
+    return render(request, 'allocated_lessons.html', {
+        'page_obj': page_obj,
+        'lesson_requests': page_obj.object_list,})
+
+
+@login_required
+def student_lesson_requests(request):  
+    """View to display all lesson requests submitted by the logged-in student."""
+    try:
+        student = request.user.student_profile
+    except AttributeError:
+        messages.error(request, 'You must be a student to view this page.')
+        return redirect('dashboard') 
+
+    
+    sort_by = request.GET.get('sort', 'requested_date')  # Default sort by requested_date
+
+    allowed_sort_fields = {
+        'requested_date': 'requested_date',
+        'requested_date_desc': '-requested_date',
+        'term': 'term__start_date',
+        'term_desc': '-term__start_date',
+        'status': 'status',
+    }
+
+    # Sort the queryset based on the sort_by parameter, if valid
+    if sort_by in allowed_sort_fields:
+        lesson_requests = LessonRequest.objects.filter(student=student).order_by(allowed_sort_fields[sort_by])
+    else:
+        lesson_requests = LessonRequest.objects.filter(student=student).order_by('-id')  # Default ordering
+
+    paginator = Paginator(lesson_requests, 10)  # Show 10 items per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'student_lesson_requests.html', {
+        'page_obj': page_obj,
+        'lesson_requests': page_obj.object_list,
+    })
+    
+
+@login_required
+def manage_lesson_requests(request):
+    """Admin view to display and manage all lesson requests."""
+    try:
+        # Ensure the logged-in user is a student
+        admin = Admin.objects.get(user=request.user)
+    except Admin.DoesNotExist:
+        messages.error(request, "You must be an admin to access this page.")
+        return redirect('dashboard')
+
+
+    sort_by = request.GET.get('sort', 'requested_date')  # Default sort by requested_date
+
+    allowed_sort_fields = {
+        'requested_date': 'requested_date',
+        'requested_date_desc': '-requested_date',
+        'term': 'term__start_date',
+        'term_desc': '-term__start_date',
+        'status': 'status',
+        'late_status': '-is_late',  # Sort by late status in descending order
+        'late_status_asc': 'is_late', 
+    }
+
+    if sort_by in allowed_sort_fields:
+        lesson_requests = LessonRequest.objects.all().order_by(allowed_sort_fields[sort_by])
+    else:
+        lesson_requests = LessonRequest.objects.all().order_by('-id')  # Default ordering
+
+    # set 10 requests per page
+    paginator = Paginator(lesson_requests, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)   
+
+    return render(request, 'manage_lesson_requests.html', {
+        'page_obj': page_obj,
+        'lesson_requests': page_obj.object_list,})
+
 
 """LESSON BOOKING VIEWS START"""
 # Step 1: Select Student
@@ -407,6 +514,7 @@ class RejectOrBookLaterView(FormView):
     
 """LESSON BOOKING VIEWS END"""
 
+
 def student_list(request):
     search_query = request.GET.get('search', '')
     learning_level = request.GET.get('learning_level', '')
@@ -453,17 +561,6 @@ def student_details(request, student_id):
 
     return render(request, 'student_detail.html', context)
 
-
-@login_required
-def student_lesson_requests(request):
-    """View to display all lesson requests submitted by the logged-in student."""
-    try:
-        student = request.user.student_profile
-    except AttributeError:
-        return render(request, 'error.html', {'message': 'You must be a student to view this page.'})
-
-    lesson_requests = LessonRequest.objects.filter(student=student).order_by('-id')
-    return render(request, 'request_list.html', {'lesson_requests': lesson_requests})
 
 def tutor_list(request):
     search_query = request.GET.get('search', '').strip()

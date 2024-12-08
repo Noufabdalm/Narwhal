@@ -47,7 +47,10 @@ urlpatterns = [
     path('lesson_booking/select_session/', views.SelectSessionView.as_view(), name='select_session'),
     path('lesson_booking/confirm/', views.ConfirmLessonBookingView.as_view(), name='confirm_booking'),
     path('reject_or_book_later/', views.RejectOrBookLaterView.as_view(), name="reject_or_book_later"),
-    path('request_list/', views.student_lesson_requests, name='request_list'),
+    path('student_lesson_requests/', views.student_lesson_requests, name='student_lesson_requests'),
+    path('manage-lesson-requests/', views.manage_lesson_requests, name='manage_lesson_requests'),
+    path('allocated_lessons/', views.allocated_lessons_view, name='allocated_lessons'),
+
     
 ]
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
