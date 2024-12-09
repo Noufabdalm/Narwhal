@@ -50,7 +50,9 @@ urlpatterns = [
     path('student_lesson_requests/', views.student_lesson_requests, name='student_lesson_requests'),
     path('manage-lesson-requests/', views.manage_lesson_requests, name='manage_lesson_requests'),
     path('allocated_lessons/', views.allocated_lessons_view, name='allocated_lessons'),
+    path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
 
     
+
 ]
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
