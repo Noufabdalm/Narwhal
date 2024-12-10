@@ -1,0 +1,23 @@
+<h1>Your Tutor Sessions</h1>
+{% for session in page_obj %}
+    <div>
+        <p><strong>Session Date:</strong> {{ session.start_date }}</p>
+        <p><strong>Time:</strong> {{ session.time }}</p>
+        <p><strong>Frequency:</strong> {{ session.get_frequency_display }}</p>
+        <p><strong>Duration:</strong> {{ session.duration_minutes }} minutes</p>
+        <p><strong>Status:</strong> {{ session.is_booked|yesno:"Booked,Available" }}</p>
+    </div>
+    <hr>
+{% empty %}
+    <p>No Tutor Sessions found.</p>
+{% endfor %}
+
+<div>
+    {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}">Previous</a>
+    {% endif %}
+    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}">Next</a>
+    {% endif %}
+</div>
