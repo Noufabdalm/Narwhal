@@ -23,6 +23,10 @@ from .forms import CourseForm, ExpertiseForm
 from django.db.models import Prefetch
 from django.core.paginator import Paginator
 
+from django.views.generic.edit import CreateView
+from django.urls import reverse_lazy
+from .forms import TutorSessionForm
+from django.utils.decorators import method_decorator
 
 
 @login_required
@@ -93,7 +97,17 @@ class LogInView(LoginProhibitedMixin, View):
         user = form.get_user()
         if user is not None:
             login(request, user)
-            return redirect(self.next)
+
+            # 新增 Tutor 登录后的跳转逻辑
+            if hasattr(user, 'tutor_profile'):
+                return redirect('tutor_dashboard')
+            
+            # 原有 Admin 和 Student 的跳转逻辑保持不变
+            elif hasattr(user, 'admin_profile'):
+                return redirect('admin_dashboard')
+            else:
+                return redirect('dashboard')  # 默认跳转学生的 dashboard
+
         messages.add_message(request, messages.ERROR, "The credentials provided were invalid!")
         return self.render()
 
@@ -728,3 +742,61 @@ def admin_dashboard(request):
     }
     return render(request, 'admin_dashboard.html', context)
 
+@login_required
+def tutor_sessions_view(request):
+    """Tutor 查看所有已添加的 Tutor Sessions."""
+    try:
+        tutor = request.user.tutor_profile
+    except AttributeError:
+        messages.error(request, '您必须是 Tutor 才能查看此页面。')
+        return redirect('dashboard')
+
+    # 查询 Tutor 的所有 Sessions
+    sessions = TutorSession.objects.filter(tutor=tutor).order_by('start_date', 'time')
+
+    # 分页逻辑
+    paginator = Paginator(sessions, 10)  # 每页显示 10 条记录
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'tutor_sessions.html', {
+        'page_obj': page_obj,
+        'sessions': page_obj.object_list,
+    })
+
+@method_decorator(login_required, name='dispatch')
+class TutorSessionCreateView(CreateView):
+    model = TutorSession
+    form_class = TutorSessionForm
+    template_name = 'tutor_session_add.html'
+    success_url = reverse_lazy('tutor_sessions')
+
+    def form_valid(self, form):
+        tutor = getattr(self.request.user, 'tutor_profile', None)
+        if not tutor:
+            messages.error(self.request, "You must be a Tutor to add sessions.")
+            return redirect('dashboard')
+
+        form.instance.tutor = tutor  # 绑定当前用户的 Tutor profile
+        messages.success(self.request, "Tutor session added successfully!")
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request, "Failed to add session. Please check the form.")
+        return super().form_invalid(form)
+
+
+@login_required
+def tutor_dashboard(request):
+    """Display dashboard for tutors."""
+    if not hasattr(request.user, 'tutor_profile'):
+        messages.error(request, "You must be a tutor to access this page.")
+        return redirect('dashboard')  # 防止非 Tutor 用户访问
+
+    tutor = request.user.tutor_profile
+    sessions = TutorSession.objects.filter(tutor=tutor)
+
+    return render(request, 'tutor_dashboard.html', {
+        'tutor': tutor,
+        'sessions': sessions,
+    })

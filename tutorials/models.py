@@ -259,6 +259,8 @@ class TutorSession(models.Model):
     
 
     def save(self, *args, **kwargs):
+        if not self.tutor:
+            raise ValueError("Tutor field is missing!")
         if not self.start_date:
             self.start_date = self.calculate_start_date() 
         if self.start_date:

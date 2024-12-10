@@ -1,0 +1,15 @@
+{% extends 'base_content.html' %}
+{% block content %}
+<div class="container">
+  <h1>Welcome, {{ tutor.user.first_name }}!</h1>
+  <p>Here are your current sessions:</p>
+  
+  <ul>
+    {% for session in sessions %}
+      <li>{{ session.term.name }} on {{ session.start_date }} ({{ session.duration_minutes }} minutes)</li>
+    {% endfor %}
+  </ul>
+
+  <a href="{% url 'tutor_session_add' %}" class="btn btn-primary">Add a New Tutor Session</a>
+</div>
+{% endblock %}

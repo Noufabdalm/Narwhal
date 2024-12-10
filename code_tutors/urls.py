@@ -51,7 +51,9 @@ urlpatterns = [
     path('manage-lesson-requests/', views.manage_lesson_requests, name='manage_lesson_requests'),
     path('allocated_lessons/', views.allocated_lessons_view, name='allocated_lessons'),
     path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
-
+    path('tutor/sessions/', views.tutor_sessions_view, name='tutor_sessions'),
+    path('tutor/sessions/add/', views.TutorSessionCreateView.as_view(), name='tutor_session_add'),
+    path('tutor/dashboard/', views.tutor_dashboard, name='tutor_dashboard'),
     
 
 ]

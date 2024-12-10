@@ -225,3 +225,16 @@ class ExpertiseForm(forms.ModelForm):
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter expertise name'}),
         }
 
+class TutorSessionForm(forms.ModelForm):
+    """表单用于创建新的 Tutor Session."""
+    class Meta:
+        model = TutorSession
+        exclude = ['tutor']
+        fields = ['time', 'term', 'start_day', 'duration_minutes', 'frequency']
+        widgets = {
+            'time': forms.Select(attrs={'class': 'form-control'}),
+            'term': forms.Select(attrs={'class': 'form-control'}),
+            'start_day': forms.Select(attrs={'class': 'form-control'}),
+            'duration_minutes': forms.Select(attrs={'class': 'form-control'}),
+            'frequency': forms.Select(attrs={'class': 'form-control'}),
+        }
