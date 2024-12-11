@@ -1,0 +1,62 @@
+<div class="content">
+  <h1 class="cover-heading text-center mb-4">Student Dashboard</h1>
+
+  <!-- Schedule Section -->
+  <h6 class="list-title text-muted mb-2">Schedule</h6>
+  <div class="row g-3">
+      <div class="col-md-6">
+          <div class="p-4 bg-light border rounded">
+              <h5 class="fw-bold text-dark">Upcoming Classes</h5>
+              <ul class="low-key">
+                  {% for lesson in upcoming_classes %}
+                      <li>
+                          <strong>{{ lesson.course.name }}</strong> with {{ lesson.tutor.user.full_name }} on {{ lesson.start_date }} at {{ lesson.session.time }}
+                      </li>
+                  {% empty %}
+                      <p>No upcoming classes.</p>
+                  {% endfor %}
+              </ul>
+          </div>
+      </div>
+      <div class="col-md-6">
+          <div class="p-4 bg-light border rounded">
+              <h5 class="fw-bold text-dark">Enrolled Classes</h5>
+              <ul class="low-key">
+                  {% for course in enrolled_classes %}
+                      <li>{{ course.name }}</li>
+                  {% empty %}
+                      <p>You are not enrolled in any classes.</p>
+                  {% endfor %}
+              </ul>
+          </div>
+      </div>
+  </div>
+
+  <!-- Lesson Management -->
+  <h6 class="list-title text-muted mt-4 mb-2">Lesson Management</h6>
+  <div class="row g-3">
+      <div class="col-md-6">
+          <div class="p-4 bg-light border rounded">
+              <h5 class="fw-bold text-dark">Request a Lesson</h5>
+              <a href="{% url 'select_course' %}" class="btn btn-outline-secondary btn-sm">Request Lesson</a>
+          </div>
+      </div>
+      <div class="col-md-6">
+          <div class="p-4 bg-light border rounded">
+              <h5 class="fw-bold text-dark">Cancel a Lesson</h5>
+              <a href="{% url 'manage_lesson_requests' %}" class="btn btn-outline-secondary btn-sm">Cancel Lesson</a>
+          </div>
+      </div>
+  </div>
+
+  <!-- Invoices -->
+  <h6 class="list-title text-muted mt-4 mb-2">Invoices</h6>
+  <div class="row g-3">
+      <div class="col-md-12">
+          <div class="p-4 bg-light border rounded">
+              <h5 class="fw-bold text-dark">Invoices</h5>
+              <a href="{% url 'student_payment_history' %}" class="btn btn-outline-secondary btn-sm">View Invoices</a>
+          </div>
+      </div>
+  </div>
+</div>
