@@ -20,6 +20,8 @@ from .models import Student, LessonRequest,Admin, TutorSession, Expertise,Lesson
 from .forms import CourseForm, ExpertiseForm
 from django.db.models import Prefetch
 from django.core.paginator import Paginator
+from django.db.models import Q
+
 
 
 
@@ -116,6 +118,23 @@ def tutor_schedule_view(request):
     ]
 
     return render(request, 'tutor_schedule.html', {"schedule": schedule})
+
+@login_required
+def student_payment_history_view(request):
+    """
+    View to display the payment history of the logged-in student, with optional status filtering.
+    """
+    invoices = Invoice.objects.filter(student__user=request.user).order_by('-due_date')
+
+    status_filter = request.GET.get('status')
+
+    if status_filter:
+        invoices = invoices.filter(status=status_filter)
+
+    return render(request, 'student_payment_history.html', {
+        'invoices': invoices,
+        'status_filter': status_filter,  
+    })
 
 @login_prohibited
 def home(request):
