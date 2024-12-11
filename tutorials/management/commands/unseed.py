@@ -3,7 +3,7 @@ from tutorials.models import (
     User, Tutor, Student, Expertise, TutorSession, Lesson, 
     LessonRequest, Course, Term, Invoice, CancellationRequest
 )
-
+#Comment to push 
 class Command(BaseCommand):
     """Build automation command to unseed the database."""
     

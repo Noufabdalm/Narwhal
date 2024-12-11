@@ -6,7 +6,7 @@ from decimal import Decimal
 from faker import Faker
 from random import randint, choice, sample
 
-
+#Comment to push 
 user_fixtures = [
     {'username': '@johndoe', 'email': 'john.doe@example.org', 'first_name': 'John', 'last_name': 'Doe'},
     {'username': '@janedoe', 'email': 'jane.doe@example.org', 'first_name': 'Jane', 'last_name': 'Doe'},
