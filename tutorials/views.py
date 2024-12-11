@@ -744,18 +744,17 @@ def admin_dashboard(request):
 
 @login_required
 def tutor_sessions_view(request):
-    """Tutor 查看所有已添加的 Tutor Sessions."""
+    """Tutor can check all the added Tutor Sessions."""
     try:
         tutor = request.user.tutor_profile
     except AttributeError:
-        messages.error(request, '您必须是 Tutor 才能查看此页面。')
+        messages.error(request, 'Only tutors can access this page.')
         return redirect('dashboard')
 
-    # 查询 Tutor 的所有 Sessions
+    # check all Tutor Sessions
     sessions = TutorSession.objects.filter(tutor=tutor).order_by('start_date', 'time')
 
-    # 分页逻辑
-    paginator = Paginator(sessions, 10)  # 每页显示 10 条记录
+    paginator = Paginator(sessions, 10) 
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -764,34 +763,58 @@ def tutor_sessions_view(request):
         'sessions': page_obj.object_list,
     })
 
-@method_decorator(login_required, name='dispatch')
-class TutorSessionCreateView(CreateView):
-    model = TutorSession
-    form_class = TutorSessionForm
-    template_name = 'tutor_session_add.html'
-    success_url = reverse_lazy('tutor_sessions')
 
-    def form_valid(self, form):
-        tutor = getattr(self.request.user, 'tutor_profile', None)
-        if not tutor:
-            messages.error(self.request, "You must be a Tutor to add sessions.")
-            return redirect('dashboard')
+class TutorSessionCreateView(LoginRequiredMixin, FormView): 
+    form_class = TutorSessionForm  
+    template_name = "tutor_session_add.html"
+    success_url = '/tutor/sessions/'
 
-        form.instance.tutor = tutor  # 绑定当前用户的 Tutor profile
-        messages.success(self.request, "Tutor session added successfully!")
-        return super().form_valid(form)
+    def post(self, request, *args, **kwargs):
+        form = self.form_class(request.POST)
+        if form.is_valid():
+            time = form.cleaned_data['time']
+            term = form.cleaned_data['term']
+            start_day = form.cleaned_data['start_day']
+            duration_minutes = form.cleaned_data['duration_minutes']
+            frequency = form.cleaned_data['frequency']
 
-    def form_invalid(self, form):
-        messages.error(self.request, "Failed to add session. Please check the form.")
-        return super().form_invalid(form)
+            try:
+                tutor = Tutor.objects.get(user=request.user)
+            except Tutor.DoesNotExist:
+                messages.error(request, "You must be a registered tutor to add sessions.")
+                return redirect(self.success_url)
 
+            tutor_session = TutorSession(
+                tutor=tutor,
+                time=time,
+                term=term,
+                start_day=start_day,
+                duration_minutes=duration_minutes,
+                frequency=frequency,
+            )
+            
+            try:
+                tutor_session.save()  
+                messages.success(request, "Tutor session added successfully!")
+                return redirect(self.success_url)
+            except ValidationError as e:
+                messages.error(request, f"Error: {e}")
+                return render(request, self.template_name, {'form': form})
 
+        messages.error(request, "Failed to add session. Please check the form.")
+        return render(request, self.template_name, {'form': form})
+
+    def get(self, request, *args, **kwargs):
+        form = self.form_class()
+        return render(request, self.template_name, {'form': form})
+
+        
 @login_required
 def tutor_dashboard(request):
     """Display dashboard for tutors."""
     if not hasattr(request.user, 'tutor_profile'):
         messages.error(request, "You must be a tutor to access this page.")
-        return redirect('dashboard')  # 防止非 Tutor 用户访问
+        return redirect('dashboard')  # avoid non-tutor acoount to access.
 
     tutor = request.user.tutor_profile
     sessions = TutorSession.objects.filter(tutor=tutor)

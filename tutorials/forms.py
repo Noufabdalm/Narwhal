@@ -226,15 +226,36 @@ class ExpertiseForm(forms.ModelForm):
         }
 
 class TutorSessionForm(forms.ModelForm):
-    """表单用于创建新的 Tutor Session."""
+    time = forms.ChoiceField(
+        choices=TutorSession.TIME_CHOICES,
+        label="Time",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    term = forms.ModelChoiceField(
+        queryset=Term.objects.all(),
+        label="Term",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    start_day = forms.ChoiceField(
+        choices=TutorSession.WEEKDAY_CHOICES,
+        label="Start Day",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    duration_minutes = forms.ChoiceField(
+        choices=TutorSession.DURATION_CHOICES,
+        label="Duration",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    frequency = forms.ChoiceField(
+        choices=TutorSession.FREQUENCY_CHOICES,
+        label="Frequency",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+
     class Meta:
         model = TutorSession
-        exclude = ['tutor']
         fields = ['time', 'term', 'start_day', 'duration_minutes', 'frequency']
-        widgets = {
-            'time': forms.Select(attrs={'class': 'form-control'}),
-            'term': forms.Select(attrs={'class': 'form-control'}),
-            'start_day': forms.Select(attrs={'class': 'form-control'}),
-            'duration_minutes': forms.Select(attrs={'class': 'form-control'}),
-            'frequency': forms.Select(attrs={'class': 'form-control'}),
-        }
