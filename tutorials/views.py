@@ -136,6 +136,29 @@ def student_payment_history_view(request):
         'status_filter': status_filter,  
     })
 
+@staff_member_required
+def admin_invoice_view(request):
+    """
+    View for admin to view and filter invoices by status and student.
+    """
+    invoices = Invoice.objects.select_related('student__user', 'lesson').all()
+
+    # Get filters from request
+    status_filter = request.GET.get('status')
+    student_filter = request.GET.get('student')
+
+    # Apply filters if provided
+    if status_filter:
+        invoices = invoices.filter(status=status_filter)
+    if student_filter:
+        invoices = invoices.filter(student__user__username__icontains=student_filter)
+
+    return render(request, 'admin_invoice_view.html', {
+        'invoices': invoices,
+        'status_filter': status_filter,
+        'student_filter': student_filter,
+    })
+
 @login_prohibited
 def home(request):
     """Display the application's start/home screen."""
