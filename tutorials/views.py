@@ -234,7 +234,7 @@ def allocated_lessons_view(request):
         messages.error(request, "You must be an admin to access this page.")
         return redirect('dashboard')
     
-    lessons = Lesson.objects.filter(session__is_booked=True)  # Only allocated lessons
+    lessons = Lesson.objects.filter(session__is_booked=True)  # getting only allocated lessons
 
     # set 10 requests per page
     paginator = Paginator(lessons, 10)

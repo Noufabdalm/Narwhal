@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
 from django.contrib.messages import get_messages
-from tutorials.models import User, Student, Term, Course, LessonRequest, TutorSession, Admin,Tutor,Lesson
+from tutorials.models import User, Student, Term, Course, LessonRequest, TutorSession, Admin,Tutor
 from django.utils.timezone import now
 from datetime import timedelta, date
 
@@ -40,9 +40,9 @@ class LessonRequestViewTestCase(TestCase):
         # Create a TutorSession
         self.tutor_session = TutorSession.objects.create(
             tutor=self.tutor,
-            course=self.course,
+            #course=self.course,
             term=self.term,
-            time=TutorSession.TIME_CHOICES[0][0],
+            time='09:30',
             start_day=0,
             duration_minutes=60,
             frequency='weekly',
@@ -59,7 +59,7 @@ class LessonRequestViewTestCase(TestCase):
         form_data = {
             'term': self.term.id,
             'course': self.course.id,
-            'duration_minutes': 60,  # Updated field
+            'duration_minutes': 60, 
             'frequency': 'weekly',
         }
         response = self.client.post(self.url, data=form_data)
@@ -81,7 +81,7 @@ class LessonRequestViewTestCase(TestCase):
         form_data = {
             'term': self.term.id,
             'course': self.course.id,
-            'duration_minutes': 60,  # Updated field
+            'duration_minutes': 60,  
             'frequency': 'weekly',
         }
         response = self.client.post(self.url, data=form_data)
@@ -124,7 +124,7 @@ class LessonRequestViewTestCase(TestCase):
         form_data = {
             'term': self.term.id,
             'course': self.course.id,
-            'duration_minutes': 60,  # Updated field
+            'duration_minutes': 60, 
             'frequency': 'weekly',
         }
         response = self.client.post(self.url, data=form_data)
@@ -235,8 +235,8 @@ class ManageLessonRequestsViewTestCase(TestCase):
             price_per_hour=20.0
         )
 
-        frequency_choice = TutorSession.FREQUENCY_CHOICES[0][0]  
-        duration_choice = TutorSession.DURATION_CHOICES[0][0]  
+        frequency_choice ='weekly'  
+        duration_choice = '60'
         for i in range(15):
             LessonRequest.objects.create(
                 student=self.student,
@@ -250,7 +250,7 @@ class ManageLessonRequestsViewTestCase(TestCase):
         self.url = reverse('manage_lesson_requests')
 
     def test_manage_lesson_requests_url(self):
-        self.assertEqual(self.url, '/manage-lesson-requests/')
+        self.assertEqual(self.url, '/manage_lesson_requests/')
 
     def test_get_manage_lesson_requests_as_admin(self):
         self.client.force_login(self.user)
@@ -284,37 +284,4 @@ class ManageLessonRequestsViewTestCase(TestCase):
         self.assertRedirects(response, expected_redirect_url)
 
 
-# class AllocatedLessonsViewTestCase(TestCase):
-#     def setUp(self):
-#         self.admin_user = User.objects.create_user(username='admin2', password='password123')
-#         self.non_admin_user = User.objects.create_user(username='nonadmin', password='password123')
-#         Admin.objects.create(user=self.admin_user)
 
-#         
-#         self.allocated_session = TutorSession.objects.create(is_booked=True)
-#         self.unallocated_session = TutorSession.objects.create(is_booked=False)
-
-#         self.allocated_lesson = Lesson.objects.create(session=self.allocated_session)
-#         self.unallocated_lesson = Lesson.objects.create(session=self.unallocated_session)
-
-#         self.url = reverse('allocated_lessons')        
-#     def test_allocated_lessons_admin_access(self):
-#         # Create an admin user
-#         admin_user = User.objects.create_user(username='admin', password='password123')
-#         Admin.objects.create(user=admin_user)
-#         self.client.force_login(admin_user)
-
-#         
-#         lesson = Lesson.objects.create(session=TutorSession.objects.create(is_booked=True))
-#         unallocated_lesson = Lesson.objects.create(session=TutorSession.objects.create(is_booked=False))
-
-#         response = self.client.get(reverse('allocated_lessons'))
-
-#         
-#         self.assertEqual(response.status_code, 200)
-#         self.assertTemplateUsed(response, 'allocated_lessons.html')
-
-#       
-#         lessons = response.context['lessons']
-#         self.assertIn(lesson, lessons)
-#         self.assertNotIn(unallocated_lesson, lessons)

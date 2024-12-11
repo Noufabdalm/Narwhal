@@ -291,7 +291,7 @@ class LessonRequest(models.Model):
     # Flag to determine if the request is late or not
     is_late = models.BooleanField(default=False)
     requested_date = models.DateField(default=datetime.date.today)
-    rejection_reason = models.TextField(null=True, blank= True)
+    #rejection_reason = models.TextField(null=True, blank= True)
 
 
     def __str__(self):
