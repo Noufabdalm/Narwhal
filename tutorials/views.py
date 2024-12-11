@@ -482,7 +482,8 @@ class ConfirmLessonBookingView(AdminRequiredMixin,FormView):
             session=session,
             term=lesson_request.term,
             request=lesson_request,
-            rollover=True
+            rollover=True,
+
         )
 
         # Create the Invoice
@@ -543,7 +544,19 @@ class RejectOrBookLaterView(AdminRequiredMixin,FormView):
 
     
 """LESSON BOOKING VIEWS END"""
+def admin_dashboard(request):
+        """Admin dashboard with summarized data."""
+        lesson_requests = LessonRequest.objects.filter(status='pending')[:5]  # Top 5 pending requests
 
+        context = {
+            'pending_requests': LessonRequest.objects.filter(status='pending').count(),
+            'total_lessons': Lesson.objects.count(),
+            'unpaid_invoices': Invoice.objects.filter(status='unpaid').count(),
+            'total_students': Student.objects.count(),
+            'total_tutors': Tutor.objects.count(),
+            'total_courses': Course.objects.count(),
+        }
+        return render(request, 'admin_dashboard.html', context)
 
 def student_list(request):
     search_query = request.GET.get('search', '')
@@ -817,19 +830,4 @@ def manage_cancellation_requests(request):
         'page_obj': page_obj,
         'cancellation_requests': page_obj.object_list,
     })
-
-
-def admin_dashboard(request):
-    """Admin dashboard with summarized data."""
-    lesson_requests = LessonRequest.objects.filter(status='pending')[:5]  # Top 5 pending requests
-
-    context = {
-        'pending_requests': LessonRequest.objects.filter(status='pending').count(),
-        'total_lessons': Lesson.objects.count(),
-        'unpaid_invoices': Invoice.objects.filter(status='unpaid').count(),
-        'total_students': Student.objects.count(),
-        'total_tutors': Tutor.objects.count(),
-        'total_courses': Course.objects.count(),
-    }
-    return render(request, 'admin_dashboard.html', context)
-
+    
