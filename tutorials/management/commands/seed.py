@@ -1,9 +1,12 @@
 from django.core.management.base import BaseCommand
-from tutorials.models import User, Tutor, Student, Expertise, Course, Term
-from datetime import date
+from tutorials.models import User,Admin, Tutor, Student, Expertise, Course, Term, Lesson, LessonRequest, CancellationRequest, TutorSession,Invoice
+from datetime import date, timedelta
+import datetime
+from decimal import Decimal
 from faker import Faker
 from random import randint, choice, sample
 
+#Comment to push 
 user_fixtures = [
     {'username': '@johndoe', 'email': 'john.doe@example.org', 'first_name': 'John', 'last_name': 'Doe'},
     {'username': '@janedoe', 'email': 'jane.doe@example.org', 'first_name': 'Jane', 'last_name': 'Doe'},
@@ -16,13 +19,23 @@ expertises = [
     "Django", "Node.js", "Express.js",
     "React Native", "Flutter"
 ]
+LEVELS = {
+            'beginner': 20,
+            'intermediate': 40,
+            'advanced': 60,
+        }
 
 class Command(BaseCommand):
-    USER_COUNT = 30
+    USER_COUNT = 40
+    ADMIN_COUNT = 10
     TUTOR_COUNT = 15
     STUDENT_COUNT = 15
+    MAX_COURSES = len(expertises)*len(LEVELS)
+    MAX_REQUESTS_PER_STUDENT = 15
+    MAX_SESSIONS_PER_TUTOR = 20
     DEFAULT_PASSWORD = 'Password123'
     help = 'Seeds the database with sample data'
+   
 
     def __init__(self):
         self.faker = Faker('en_GB')
@@ -30,11 +43,17 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.create_users()
         self.users = User.objects.all()
+        self.assign_roles_to_fixtures()
         self.create_expertise()
         self.create_tutors()
         self.create_students()
         self.create_courses()
         self.create_terms()
+        self.create_sessions()
+        self.create_lesson_requests()
+        self.create_lessons()
+        self.create_invoices()
+        self.create_cancellation_requests()
 
     def create_users(self):
         print("Seeding users...")
@@ -97,6 +116,16 @@ class Command(BaseCommand):
                 tutors_created += 1
         print("Tutor seeding complete.")
 
+    def create_admins(self):
+        print("Seeding admins...")
+        admins_created = Admin.objects.count()
+        while admins_created < self.ADMIN_COUNT:
+            user = self.get_unassigned_user()
+            if user:
+                Admin.objects.create(user=user)
+                admins_created += 1
+        print("Admin seeding complete.")
+
     def create_students(self):
         print("Seeding students...")
         levels = ['beginner', 'intermediate', 'advanced']
@@ -110,11 +139,6 @@ class Command(BaseCommand):
 
     def create_courses(self):
         print("Seeding courses...")
-        LEVELS = {
-            'beginner': 20,
-            'intermediate': 40,
-            'advanced': 60,
-        }
         expertise_list = Expertise.objects.all()
         for expertise in expertise_list:
             for level, price in LEVELS.items():
@@ -143,10 +167,156 @@ class Command(BaseCommand):
                 print(f"Term '{name}' already exists.")
         print("Term seeding complete.")
 
+    def create_sessions(self):
+        print("Seeding tutor sessions...")
+        terms = Term.objects.all() 
+        tutors = Tutor.objects.all()  
+        time_choices = [
+            (datetime.time(hour, minute))
+            for hour in range(9, 18) 
+            for minute in (0, 30) 
+        ]
+
+        for tutor in tutors:
+            for term in terms:
+                session_count = randint(1, self.MAX_SESSIONS_PER_TUTOR)  
+                created_sessions = 0  
+
+                while created_sessions < session_count:
+                    start_time = choice(time_choices)
+                    start_day = randint(0, 4) 
+                    duration = choice([60, 120])  
+
+                    
+                    end_time = (datetime.datetime.combine(datetime.date.today(), start_time) +
+                                timedelta(minutes=duration)).time()
+
+                    overlapping_sessions = TutorSession.objects.filter(
+                        tutor=tutor,
+                        term=term,
+                        start_day=start_day,
+                    ).filter(
+                        time__lt=end_time,
+                        time__gte=start_time
+                    )
+
+                    if overlapping_sessions.exists():
+                        continue  # Skip creation if there's an overlap
+
+                    
+                    TutorSession.objects.create(
+                        tutor=tutor,
+                        time=start_time,
+                        term=term,
+                        start_day=start_day,
+                        duration_minutes=duration,
+                        frequency=choice(['weekly', 'fortnightly']),
+                        is_booked=False,
+                    )
+                    created_sessions += 1  
+        print("Tutor sessions seeding complete.")
+
+    
+    def create_lesson_requests(self):
+        print("Seeding lesson requests...")
+        students = Student.objects.all()
+        courses = Course.objects.all()
+        terms = Term.objects.all()
+        for student in students:
+            request_count = randint(1, self.MAX_REQUESTS_PER_STUDENT)
+            for _ in range(request_count):
+                LessonRequest.objects.get_or_create(
+                    student=student,
+                    course=choice(courses),
+                    frequency=choice(['weekly', 'fortnightly']),
+                    duration_minutes=choice([60, 120]),
+                    term=choice(terms),
+                    status='pending'  # Initially all requests are pending
+                )
+        print("Lesson requests seeding complete.")
+
+    def create_lessons(self):
+        print("Seeding lessons...")
+        lesson_requests = LessonRequest.objects.all()
+        for request in lesson_requests:
+            if randint(0, 1):  # Randomly allocate some requests
+                session = TutorSession.objects.filter(
+                    tutor__expertise=request.course.ProgrammingLanguage,
+                    term=request.term,
+                    is_booked=False,  # Ensure session is not already booked
+                    start_day=request.term.start_date.weekday()  # Match weekday to term
+                ).first()
+
+                if session:
+                    # Create lesson and mark session as booked
+                    lesson, created = Lesson.objects.get_or_create(
+                        student=request.student,
+                        tutor=session.tutor,
+                        course=request.course,
+                        session=session,
+                        term=request.term,
+                        request=request,
+                    )
+                    if created:
+                        session.is_booked = True
+                        session.save()
+
+                        request.status = 'allocated'
+                        request.save()
+        print("Lessons seeding complete.")
+
+
+
+    def create_invoices(self):
+        print("Seeding invoices...")
+        lessons = Lesson.objects.all()
+        for lesson in lessons:
+            Invoice.objects.get_or_create(
+                lesson=lesson,
+                defaults={
+                    'student': lesson.student,
+                    'total_amount': Decimal(lesson.session.calculate_term_cost(lesson.course)),
+                    'due_date': lesson.session.start_date,
+                    'status': choice(['paid', 'unpaid']),
+                }
+            )
+        print("Invoices seeding complete.")
+
+    def create_cancellation_requests(self):
+        print("Seeding cancellation requests...")
+        lessons = Lesson.objects.filter(rollover =True)
+        for lesson in lessons:
+            if randint(0, 1): 
+                submitter = choice([lesson.student.user, lesson.tutor.user])
+                CancellationRequest.objects.get_or_create(
+                    lesson=lesson,
+                    defaults={
+                        'user': submitter,
+                        'reason': self.faker.text(max_nb_chars=200),
+                        'status': 'pending'
+                    }
+                )
+        print("Cancellation requests seeding complete.")
+
+    def assign_roles_to_fixtures(self):
+        """Assign specific roles to user fixtures."""
+        for fixture in user_fixtures:
+            user = User.objects.filter(username=fixture['username']).first()
+            if user:
+                if fixture['username'] == '@johndoe':
+                    if not Admin.objects.filter(user=user).exists():
+                        Admin.objects.create(user=user)
+                elif fixture['username'] == '@janedoe':
+                    if not Tutor.objects.filter(user=user).exists():
+                        tutor = Tutor.objects.create(user=user)
+                        tutor.expertise.add(*list(Expertise.objects.all()[:5])) 
+                elif fixture['username'] == '@charlie':
+                    if not Student.objects.filter(user=user).exists():
+                        Student.objects.create(user=user, learning_level='beginner')
+
     def random_expertise(self, expertise_list):
-        # Choose a random number of skills between 1 and 10
         NumberOfSkills = randint(1, 10)
-        return sample(expertise_list, k=NumberOfSkills)  # Sample this number from the full list of expertise
+        return sample(expertise_list, k=NumberOfSkills)  
 
     def get_unassigned_user(self):
         user = User.objects.filter(

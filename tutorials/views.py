@@ -9,16 +9,16 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.views import View
 from django.views.generic.edit import FormView, UpdateView
 from django.urls import reverse
-from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm, LessonRequestForm, StudentSelectionForm,RequestSelectionForm,SessionSelectionForm
+from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm, LessonRequestForm, StudentSelectionForm,RequestSelectionForm,SessionSelectionForm, CancellationRequestForm, TutorSignUpForm
 from tutorials.helpers import login_prohibited
 from django.utils import timezone
 from datetime import timedelta
 from django.core.paginator import Paginator
-
+from django.db import transaction
 from django.contrib.admin.views.decorators import staff_member_required
 
 
-from .models import Student, LessonRequest,Admin, TutorSession, Expertise,Lesson, Invoice , Tutor, Course
+from .models import Student, LessonRequest,Admin, TutorSession, Expertise,Lesson, Invoice , Tutor, Course, CancellationRequest
 from .forms import CourseForm, ExpertiseForm
 from django.db.models import Prefetch
 from django.core.paginator import Paginator
@@ -75,6 +75,16 @@ class LoginProhibitedMixin:
             )
         else:
             return self.redirect_when_logged_in_url
+        
+
+class AdminRequiredMixin:
+    def dispatch(self, request, *args, **kwargs):
+        try:
+            Admin.objects.get(user=request.user)
+        except Admin.DoesNotExist:
+            messages.error(request, "You must be an admin to access this page.")
+            return redirect('dashboard')  # Redirect to a suitable page
+        return super().dispatch(request, *args, **kwargs)
 
 
 class LogInView(LoginProhibitedMixin, View):
@@ -184,6 +194,21 @@ class SignUpView(LoginProhibitedMixin, FormView):
 
     def get_success_url(self):
         return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
+    
+class TutorSignUpView(LoginProhibitedMixin, FormView):
+    """Display the sign up screen and handle tutor sign ups."""
+
+    form_class = TutorSignUpForm
+    template_name = "tutor_sign_up.html"
+    redirect_when_logged_in_url = settings.REDIRECT_URL_WHEN_LOGGED_IN
+
+    def form_valid(self, form):
+        self.object = form.save()
+        login(self.request, self.object)
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
 
 
 class LessonRequestView(LoginRequiredMixin, FormView): 
@@ -245,6 +270,7 @@ def allocated_lessons_view(request):
         # Ensure the logged-in user is a student
         admin = Admin.objects.get(user=request.user)
     except Admin.DoesNotExist:
+
         messages.error(request, "You must be an admin to access this page.")
         return redirect('dashboard')
     
@@ -307,7 +333,7 @@ def manage_lesson_requests(request):
         return redirect('dashboard')
 
 
-    sort_by = request.GET.get('sort', 'requested_date')  # Default sort by requested_date
+    sort_by = request.GET.get('sort', 'requested_date')  
 
     allowed_sort_fields = {
         'requested_date': 'requested_date',
@@ -315,14 +341,14 @@ def manage_lesson_requests(request):
         'term': 'term__start_date',
         'term_desc': '-term__start_date',
         'status': 'status',
-        'late_status': '-is_late',  # Sort by late status in descending order
+        'late_status': '-is_late',  
         'late_status_asc': 'is_late', 
     }
 
     if sort_by in allowed_sort_fields:
         lesson_requests = LessonRequest.objects.all().order_by(allowed_sort_fields[sort_by])
     else:
-        lesson_requests = LessonRequest.objects.all().order_by('-id')  # Default ordering
+        lesson_requests = LessonRequest.objects.all().order_by('-id') 
 
     # set 10 requests per page
     paginator = Paginator(lesson_requests, 10)
@@ -336,18 +362,19 @@ def manage_lesson_requests(request):
 
 """LESSON BOOKING VIEWS START"""
 # Step 1: Select Student
-class SelectStudentView(FormView):
+class SelectStudentView(AdminRequiredMixin,FormView):
+
     template_name = "select_student.html"
     form_class = StudentSelectionForm
 
     def form_valid(self, form):
         student = form.cleaned_data['student']
-        self.request.session['student_id'] = student.id  # Store student in session
-        return redirect(reverse("select_request"))  # Redirect to the next step
+        self.request.session['student_id'] = student.id  
+        return redirect(reverse("select_request"))  
 
 
 # Step 2: Select Request
-class SelectRequestView(FormView):
+class SelectRequestView(AdminRequiredMixin,FormView):
     template_name = "select_request.html"
     form_class = RequestSelectionForm
 
@@ -367,7 +394,7 @@ class SelectRequestView(FormView):
 
 
 # Step 3: Select Session
-class SelectSessionView(FormView):
+class SelectSessionView(AdminRequiredMixin,FormView):
     template_name = "select_session.html"
     form_class = SessionSelectionForm
 
@@ -389,7 +416,7 @@ class SelectSessionView(FormView):
         tutor__expertise=lesson_request.course.ProgrammingLanguage
         ).distinct()
 
-        # Dynamically update the queryset for the session field
+        
         form = super().get_form()
         form.fields['session'].queryset = sessions
         return form
@@ -406,9 +433,9 @@ class SelectSessionView(FormView):
         return redirect(reverse("confirm_booking"))
 
 #Step 4 Confirm Booking (If there is a session)
-class ConfirmLessonBookingView(FormView):
+class ConfirmLessonBookingView(AdminRequiredMixin,FormView):
     template_name = "confirm_booking.html"
-    form_class = forms.Form  # No fields needed, just confirmation
+    form_class = forms.Form 
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -427,7 +454,7 @@ class ConfirmLessonBookingView(FormView):
                 f"{lesson_request.course.name} - {tutor_session.tutor.user.get_full_name()} "
                 f"on {tutor_session.start_date}"
             )
-            context['due_date'] = tutor_session.start_date  #Assuming start_date is the due dat
+            context['due_date'] = tutor_session.start_date  
 
         # Add calculated invoice amount to the context
         context['invoice_amount'] = self.calculate_invoice_amount()
@@ -441,7 +468,7 @@ class ConfirmLessonBookingView(FormView):
         session_id = self.request.session.get('session_id')
         if session_id and lesson_request:
             tutor_session = TutorSession.objects.get(id=session_id)
-            return tutor_session.calculate_term_cost(lesson_request.course)  # Assuming `calculate_term_cost` is defined in TutorSession
+            return tutor_session.calculate_term_cost(lesson_request.course)  
         return 0
 
     def form_valid(self, form):
@@ -470,6 +497,7 @@ class ConfirmLessonBookingView(FormView):
             term=lesson_request.term,
             request=lesson_request,
             rollover=True,
+
         )
 
         # Create the Invoice
@@ -490,7 +518,7 @@ class ConfirmLessonBookingView(FormView):
         return redirect(reverse("dashboard"))
 
 #Step 4 Reject Booking or snooze it for later (If there is no session)
-class RejectOrBookLaterView(FormView):
+class RejectOrBookLaterView(AdminRequiredMixin,FormView):
     template_name = "reject_or_book_later.html"
     form_class = forms.Form 
 
@@ -530,7 +558,19 @@ class RejectOrBookLaterView(FormView):
 
     
 """LESSON BOOKING VIEWS END"""
+def admin_dashboard(request):
+        """Admin dashboard with summarized data."""
+        lesson_requests = LessonRequest.objects.filter(status='pending')[:5]  # Top 5 pending requests
 
+        context = {
+            'pending_requests': LessonRequest.objects.filter(status='pending').count(),
+            'total_lessons': Lesson.objects.count(),
+            'unpaid_invoices': Invoice.objects.filter(status='unpaid').count(),
+            'total_students': Student.objects.count(),
+            'total_tutors': Tutor.objects.count(),
+            'total_courses': Course.objects.count(),
+        }
+        return render(request, 'admin_dashboard.html', context)
 
 def student_list(request):
     search_query = request.GET.get('search', '')
@@ -727,21 +767,84 @@ def expertise_delete(request, expertise_id):
 
     return render(request, 'expertise_delete.html', {'expertise': expertise})
 
+@login_required
+def CancellationRequestView(request):
+    if request.method == 'POST':
+        form = CancellationRequestForm(request.POST, user=request.user)  # Pass the user to the form
+        if form.is_valid():
+            # Save the form but don't commit to the database yet
+            cancellation_request = form.save(commit=False)
+            # Assign the logged-in user to the `user` field
+            cancellation_request.user = request.user
+            # Save the instance to the database
+            cancellation_request.save()
+            messages.success(request, "Your cancellation request has been submitted.")
+            return redirect('dashboard')  # Redirect to the dashboard or another page
+    else:
+        form = CancellationRequestForm(user=request.user)  # Pass the user to the form
+    return render(request, 'cancellation_request.html', {'form': form})
 
-def admin_dashboard(request):
-    """Admin dashboard with summarized data."""
-    lesson_requests = LessonRequest.objects.filter(status='pending')[:5]  # Top 5 pending requests
-
-    context = {
-        'pending_requests': LessonRequest.objects.filter(status='pending').count(),
-        'total_lessons': Lesson.objects.count(),
-        'unpaid_invoices': Invoice.objects.filter(status='unpaid').count(),
-        'total_students': Student.objects.count(),
-        'total_tutors': Tutor.objects.count(),
-        'total_courses': Course.objects.count(),
+@login_required
+def manage_cancellation_requests(request):
+    """Admin view to display and manage all cancellation requests."""
+    # Sorting logic
+    sort_by = request.GET.get('sort', 'request_date')
+    allowed_sort_fields = {
+        'request_date': 'request_date',
+        'request_date_desc': '-request_date',
+        'status': 'status',
+        'late_status': '-is_late',
+        'late_status_asc': 'is_late',
     }
-    return render(request, 'admin_dashboard.html', context)
 
+    if sort_by in allowed_sort_fields:
+        cancellation_requests = CancellationRequest.objects.all().order_by(allowed_sort_fields[sort_by])
+    else:
+        cancellation_requests = CancellationRequest.objects.all().order_by('-id')
+
+    # Handle POST requests for accept/reject actions
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        request_id = request.POST.get('request_id')
+
+        if not action or not request_id:
+            messages.error(request, "Invalid action or request ID.")
+            return redirect('manage_cancellation_requests')
+
+        cancellation_request = get_object_or_404(CancellationRequest, id=request_id)
+
+        if action == 'accept':
+                
+            lesson = Lesson.objects.select_related('session').get(id=cancellation_request.lesson.id)
+            session = lesson.session
+
+            session.is_booked = False
+            session.save()
+
+            cancellation_request.lesson.status = "cancelled"
+            
+            cancellation_request.status = 'approved'
+            cancellation_request.save()
+
+            messages.success(request, "Cancellation request approved. The session is now available.")
+
+        elif action == 'reject':
+            cancellation_request.status = 'rejected'
+            cancellation_request.save()
+            messages.success(request, "Cancellation request rejected.")
+
+        return redirect('manage_cancellation_requests')
+
+    # Pagination
+    paginator = Paginator(cancellation_requests, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'manage_cancellation_requests.html', {
+        'page_obj': page_obj,
+        'cancellation_requests': page_obj.object_list,
+    })
+    
 @login_required
 def tutor_sessions_view(request):
     """Tutor can check all the added Tutor Sessions."""

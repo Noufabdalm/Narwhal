@@ -95,7 +95,6 @@ class Expertise(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        # Capitalize the first letter for display purposes
         return self.name.capitalize()
 
     def tutors_with_expertise(self):
@@ -196,7 +195,6 @@ class TutorSession(models.Model):
 
 
     tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name="Tutor_Sessions")
-    #course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="Course_Sessions")
     time = models.TimeField(choices=TIME_CHOICES)
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='Term_Sessions')
     start_day = models.IntegerField(choices=WEEKDAY_CHOICES, default=0)
@@ -240,14 +238,34 @@ class TutorSession(models.Model):
     def calculate_term_cost(self, course):
         lessons_per_term = 12 if self.frequency == 'weekly' else 6
         # Convert all components to Decimal
-        duration_in_hours = Decimal(self.duration_minutes) / Decimal(60)  # Convert minutes to hours as Decimal
+        duration_in_hours = Decimal(self.duration_minutes) / Decimal(60)  
         price_per_hour = Decimal(course.price_per_hour)  # Ensure course price per hour is a Decimal
         lessons = Decimal(lessons_per_term)  # Convert lessons_per_term to Decimal
         # Perform the calculation
         total_cost = duration_in_hours * price_per_hour * lessons
         return total_cost
+    
+    def calculate_end_time(self):
+        """Helper method to calculate the end time of the session.
+            To use it to avoid overlapping sessions
+         """
+        duration_delta = timedelta(minutes=self.duration_minutes)
+        start_datetime = datetime.datetime.combine(datetime.date.today(), self.time)
+        end_datetime = start_datetime + duration_delta
+        return end_datetime.time()
 
     def clean(self):
+        
+        if self.pk:  
+            original_session = TutorSession.objects.get(pk=self.pk)
+            if (
+                original_session.tutor == self.tutor and
+                original_session.time == self.time and
+                original_session.start_date == self.start_date and
+                original_session.term == self.term
+            ):
+                return  
+
         # Check for duplicate sessions
         if TutorSession.objects.filter(
             tutor=self.tutor,
@@ -256,16 +274,33 @@ class TutorSession(models.Model):
             term=self.term,
         ).exclude(pk=self.pk).exists():
             raise ValidationError("A tutor session with these details already exists.")
+
+        
+        end_time = self.calculate_end_time()
+
+        # Check for overlapping sessions on the same day and term
+        overlapping_sessions = TutorSession.objects.filter(
+            tutor=self.tutor,
+            term=self.term,
+            start_day=self.start_day,
+        ).exclude(pk=self.pk).filter(
+            time__lt=end_time,  
+            time__gte=self.time  
+        )
+
+        if overlapping_sessions.exists():
+            raise ValidationError("This session overlaps with another session for the same tutor.")
+
     
 
     def save(self, *args, **kwargs):
-        if not self.tutor:
-            raise ValueError("Tutor field is missing!")
+        if not self.pk or (self.time or self.start_day or self.term):
+            self.clean()
         if not self.start_date:
             self.start_date = self.calculate_start_date() 
         if self.start_date:
             self.end_date = self.calculate_end_date()
-        self.clean()  # Validate before saving
+       
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -321,9 +356,7 @@ class LessonRequest(models.Model):
         )
     
     def save(self, *args, **kwargs):
-        """
-        Override the save method to check if the request is late before saving.
-        """
+        
         self.check_and_mark_late()
         super().save(*args, **kwargs)
     
@@ -333,6 +366,8 @@ class LessonRequest(models.Model):
 
 class Lesson(models.Model):
     """Model for Booking lessons."""
+    STATUS_CHOICES = { ('active', 'Active'),
+            ('cancelled', 'Cancelled')}
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='lessons')
     tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='lessons')
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lessons')
@@ -353,6 +388,7 @@ class Lesson(models.Model):
         related_name='allocated_lesson'
     )
     rollover = models.BooleanField(default=True) # Student is going to take the model next term unless a change or cancellation is requested
+    
 
     def clean(self):
         super().clean()
@@ -398,20 +434,38 @@ class Invoice(models.Model):
     def __str__(self):
         return f"Invoice for {self.student.user.username} ({self.status})"
     
-    @classmethod
-    def get_invoice_details(cls):
-        """
-        Returns a dictionary containing invoice status and amount for each student and lesson.
-        """
-        invoice_details = []
-        for invoice in cls.objects.select_related('student', 'lesson').all():
-            invoice_details.append({
-                'student': invoice.student.user.get_full_name(),
-                'lesson': str(invoice.lesson),  # Assuming the Lesson model has a meaningful __str__ method
-                'status': invoice.status,
-                'amount': invoice.total_amount,
-            })
-        return invoice_details
-    
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+
+
+class CancellationRequest(models.Model):
+    REQUEST_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cancellation_requests')
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='Lessons')
+    reason = models.TextField(blank=True, null=True)  
+    status = models.CharField(max_length=20, choices=REQUEST_STATUS_CHOICES, default='pending')
+    request_date = models.DateTimeField(default=now)
+    is_late = models.BooleanField(default=False)
+
+    def check_and_mark_late(self):
+        """
+        Checks if the request is late based on the term start date and marks it as late if applicable.
+        """
+        days_until_term_starts = (self.lesson.term.start_date - now().date()).days
+        if days_until_term_starts < 14:
+            self.is_late = True
+
+    def __str__(self):
+        return f"Cancellation by {self.user.username} for {self.lesson.course.name} ({self.status})"
+    
+    def save(self, *args, **kwargs):
+       
+        self.check_and_mark_late()
+        super().save(*args, **kwargs)
+        
+     #Comment to push 
