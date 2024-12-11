@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     User, Admin, Student, Expertise, Tutor,
-    Course, Term, TutorSession, LessonRequest, Lesson,Invoice
+    Course, Term, TutorSession, LessonRequest, Lesson,Invoice, CancellationRequest
 )
 
 @admin.register(User)
@@ -75,7 +75,7 @@ class TutorSessionAdmin(admin.ModelAdmin):
 @admin.register(LessonRequest)
 class LessonRequestAdmin(admin.ModelAdmin):
     """Admin interface for LessonRequest model."""
-    list_display = ('student', 'course', 'frequency', 'term', 'status','is_late')
+    list_display = ('student', 'course', 'frequency', 'term', 'status','is_late','rejection_reason')
     search_fields = ('student__user__username', 'course__name', 'term__name')
     list_filter = ('status', 'frequency', 'term')
     ordering = ('term',)
@@ -104,3 +104,10 @@ class InvoiceAdmin(admin.ModelAdmin):
         }),
     )
 
+
+@admin.register(CancellationRequest)
+class CancellationRequestAdmin(admin.ModelAdmin):
+    list_display = ('user', 'lesson', 'status', 'request_date', 'is_late')
+    list_filter = ('status', 'is_late')
+    search_fields = ('user__username', 'lesson__course__name', 'lesson__tutor__user__username')
+    ordering = ('-request_date',)
