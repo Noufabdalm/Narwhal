@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from tutorials.models import (
     User, Tutor, Student, Expertise, TutorSession, Lesson, 
-    LessonRequest, Course, Term, Invoice
+    LessonRequest, Course, Term, Invoice, CancellationRequest
 )
 
 class Command(BaseCommand):
@@ -11,6 +11,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write("Starting to unseed the database...")
+
+        # Delete cancellation requests records
+        Cancellation_requests_count = CancellationRequest.objects.count()
+        CancellationRequest.objects.all().delete()
+        self.stdout.write(f"Deleted {CancellationRequest} cancellation requests records.")
 
         # Delete Invoice records
         invoice_count = Invoice.objects.count()
