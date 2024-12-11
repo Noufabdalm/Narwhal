@@ -56,6 +56,9 @@ urlpatterns = [
     path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('payment-history/', views.student_payment_history_view, name='student_payment_history'),
     path('admin-invoices/', views.admin_invoice_view, name='admin_invoice_view'),
+    path('student_dashboard/', views.student_dashboard, name='student_dashboard'),
+
+
 
 
 ]

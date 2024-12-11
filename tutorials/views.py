@@ -25,18 +25,33 @@ from django.db.models import Q
 
 
 
+# @login_required
+# def dashboard(request):
+#     """Display the current user's dashboard."""
+
+#     current_user = request.user
+#     # Check if the user is an admin
+#     is_admin = hasattr(current_user, 'admin_profile')
+
+#     context = {
+#         'is_admin': is_admin,
+#     }
+#     return render(request, 'dashboard.html', {'user': current_user})
+
 @login_required
 def dashboard(request):
     """Display the current user's dashboard."""
-
     current_user = request.user
-    # Check if the user is an admin
-    is_admin = hasattr(current_user, 'admin_profile')
 
-    context = {
-        'is_admin': is_admin,
-    }
-    return render(request, 'dashboard.html', {'user': current_user})
+    # Check if the user is a student or admin
+    if hasattr(current_user, 'student_profile'):
+        return redirect('student_dashboard')  # Redirect to student dashboard
+    elif hasattr(current_user, 'admin_profile'):
+        return redirect('admin_dashboard')  # Redirect to admin dashboard
+
+    # Default redirection if the user is neither a student nor an admin
+    messages.error(request, "Your account type is not authorized to access a dashboard.")
+    return redirect('home')
 
 @login_required
 def student_courses_view(request):
@@ -135,6 +150,18 @@ def student_payment_history_view(request):
         'invoices': invoices,
         'status_filter': status_filter,  
     })
+
+@login_required
+def student_dashboard(request):
+    """Student dashboard with summarized data and actions."""
+    student = request.user.student_profile  # Fetch the logged-in student's profile
+
+    context = {
+        'upcoming_classes': Lesson.objects.filter(student=student, start_date__gte=timezone.now()).order_by('start_date')[:5],
+        'enrolled_classes': student.enrolled_courses(),
+        'invoices': Invoice.objects.filter(student=student),
+    }
+    return render(request, 'student_dashboard.html', context)
 
 @staff_member_required
 def admin_invoice_view(request):
