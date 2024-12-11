@@ -95,7 +95,6 @@ class Expertise(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        # Capitalize the first letter for display purposes
         return self.name.capitalize()
 
     def tutors_with_expertise(self):
@@ -319,9 +318,7 @@ class LessonRequest(models.Model):
         )
     
     def save(self, *args, **kwargs):
-        """
-        Override the save method to check if the request is late before saving.
-        """
+        
         self.check_and_mark_late()
         super().save(*args, **kwargs)
     
@@ -331,6 +328,8 @@ class LessonRequest(models.Model):
 
 class Lesson(models.Model):
     """Model for Booking lessons."""
+    STATUS_CHOICES = { ('active', 'Active'),
+            ('cancelled', 'Cancelled')}
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='lessons')
     tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='lessons')
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lessons')
@@ -351,6 +350,11 @@ class Lesson(models.Model):
         related_name='allocated_lesson'
     )
     rollover = models.BooleanField(default=True) # Student is going to take the model next term unless a change or cancellation is requested
+    status = models.CharField(
+        max_length=20,
+        choices= STATUS_CHOICES,
+        default='active'
+    )
 
     def clean(self):
         super().clean()
@@ -396,20 +400,37 @@ class Invoice(models.Model):
     def __str__(self):
         return f"Invoice for {self.student.user.username} ({self.status})"
     
-    @classmethod
-    def get_invoice_details(cls):
-        """
-        Returns a dictionary containing invoice status and amount for each student and lesson.
-        """
-        invoice_details = []
-        for invoice in cls.objects.select_related('student', 'lesson').all():
-            invoice_details.append({
-                'student': invoice.student.user.get_full_name(),
-                'lesson': str(invoice.lesson),  # Assuming the Lesson model has a meaningful __str__ method
-                'status': invoice.status,
-                'amount': invoice.total_amount,
-            })
-        return invoice_details
-    
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+
+
+class CancellationRequest(models.Model):
+    REQUEST_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cancellation_requests')
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='Lessons')
+    reason = models.TextField(blank=True, null=True)  
+    status = models.CharField(max_length=20, choices=REQUEST_STATUS_CHOICES, default='pending')
+    request_date = models.DateTimeField(default=now)
+    is_late = models.BooleanField(default=False)
+
+    def check_and_mark_late(self):
+        """
+        Checks if the request is late based on the term start date and marks it as late if applicable.
+        """
+        days_until_term_starts = (self.lesson.term.start_date - now().date()).days
+        if days_until_term_starts < 14:
+            self.is_late = True
+
+    def __str__(self):
+        return f"Cancellation by {self.user.username} for {self.lesson.course.name} ({self.status})"
+    
+    def save(self, *args, **kwargs):
+       
+        self.check_and_mark_late()
+        super().save(*args, **kwargs)
+    

@@ -2,7 +2,7 @@
 from django import forms
 from django.contrib.auth import authenticate
 from django.core.validators import RegexValidator
-from .models import User, Expertise, LessonRequest, Student, TutorSession, Term, Course
+from .models import User, Expertise, LessonRequest, Student, TutorSession, Term, Course, CancellationRequest, Lesson, Tutor
 
 class LogInForm(forms.Form):
     """Form enabling registered users to log in."""
@@ -90,15 +90,21 @@ class PasswordForm(NewPasswordMixin):
 class SignUpForm(NewPasswordMixin, forms.ModelForm):
     """Form enabling unregistered users to sign up."""
 
+    learning_level = forms.ChoiceField(
+        choices=Student.LEARNING_LEVEL_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        required=True,
+        label="Learning Level",
+    )
+
     class Meta:
         """Form options."""
 
         model = User
-        fields = ['first_name', 'last_name', 'username', 'email']
+        fields = ['first_name', 'last_name', 'username', 'email', 'learning_level']
 
     def save(self):
         """Create a new user."""
-
         super().save(commit=False)
         user = User.objects.create_user(
             self.cleaned_data.get('username'),
@@ -107,6 +113,44 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
             email=self.cleaned_data.get('email'),
             password=self.cleaned_data.get('new_password'),
         )
+
+        # Create a related Student profile with the chosen learning level
+        Student.objects.create(
+            user=user,
+            learning_level=self.cleaned_data.get('learning_level'),
+        )
+
+        return user
+
+    
+class TutorSignUpForm(NewPasswordMixin, forms.ModelForm):
+    """Form enabling tutors to sign up with expertise selection."""
+
+    expertise = forms.ModelMultipleChoiceField(
+        queryset=Expertise.objects.all(),
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
+        required=True,
+        label="Select your expertise",
+    )
+
+    class Meta:
+        """Form options."""
+        model = User
+        fields = ['first_name', 'last_name', 'username', 'email']
+
+    def save(self):
+        """Create a new tutor and link their expertise."""
+        user = super().save(commit=False)
+        user = User.objects.create_user(
+            self.cleaned_data.get('username'),
+            first_name=self.cleaned_data.get('first_name'),
+            last_name=self.cleaned_data.get('last_name'),
+            email=self.cleaned_data.get('email'),
+            password=self.cleaned_data.get('new_password'),
+        )
+        
+        tutor = Tutor.objects.create(user=user)
+        tutor.expertise.set(self.cleaned_data.get('expertise'))
         return user
 
 
@@ -225,3 +269,30 @@ class ExpertiseForm(forms.ModelForm):
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter expertise name'}),
         }
 
+class CancellationRequestForm(forms.ModelForm):
+    class Meta:
+        model = CancellationRequest
+        fields = ['lesson', 'reason']
+        widgets = {
+            'lesson': forms.Select(attrs={'class': 'form-control'}),
+            'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)  
+        super().__init__(*args, **kwargs)
+        
+        if user:
+            if hasattr(user, 'student_profile'):
+                self.fields['lesson'].queryset = Lesson.objects.filter(student=user.student_profile)
+            elif hasattr(user, 'tutor_profile'): 
+                self.fields['lesson'].queryset = Lesson.objects.filter(tutor=user.tutor_profile)
+            else:
+                self.fields['lesson'].queryset = Lesson.objects.none()  
+                
+    def clean(self):
+        cleaned_data = super().clean()
+        lesson = cleaned_data.get('lesson')
+        if not lesson:
+            raise forms.ValidationError("Please select a valid lesson for cancellation.")
+        return cleaned_data
