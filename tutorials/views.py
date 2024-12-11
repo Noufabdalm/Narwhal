@@ -11,6 +11,7 @@ from django.views.generic.edit import FormView, UpdateView
 from django.urls import reverse
 from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm, LessonRequestForm, StudentSelectionForm,RequestSelectionForm,SessionSelectionForm, CancellationRequestForm, TutorSignUpForm
 from tutorials.helpers import login_prohibited
+from .models import Lesson
 from django.utils import timezone
 from datetime import timedelta
 from django.core.paginator import Paginator
