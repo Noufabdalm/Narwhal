@@ -1,0 +1,92 @@
+{% extends 'base_content.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Add Course</h1>
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label for="id_name" class="form-label">Name:</label>
+                <input type="text" id="id_name" class="form-control" value="" readonly>
+            </div>
+            <div class="col-md-6">
+                <label for="id_price_per_hour" class="form-label">Price per hour:</label>
+                <input type="text" id="id_price_per_hour" class="form-control" value="" readonly>
+            </div>
+        </div>
+        <div class="row g-3 mt-3">
+            <div class="col-md-6">
+                <label for="id_level" class="form-label">Level:</label>
+                <select name="level" id="id_level" class="form-select">
+                    <option value="">Select level</option>
+                    {% for value, label in form.fields.level.choices %}
+                    <option value="{{ value }}" {% if form.initial.level == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label for="id_ProgrammingLanguage" class="form-label">Programming Language:</label>
+                <select name="ProgrammingLanguage" id="id_ProgrammingLanguage" class="form-select">
+                    <option value="">Select language</option>
+                    {% for value, label in form.fields.ProgrammingLanguage.choices %}
+                    <option value="{{ value }}" {% if form.initial.ProgrammingLanguage == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="mt-3">
+            <label for="id_description" class="form-label">Description:</label>
+            <textarea id="id_description" class="form-control" rows="4" readonly></textarea>
+        </div>
+        <div class="mt-4 text-end">
+            <a href="{% url 'course_list' %}" class="btn btn-secondary">Back</a>
+            <button type="submit" class="btn btn-primary">Add Course</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const levelField = document.getElementById("id_level");
+        const expertiseField = document.getElementById("id_ProgrammingLanguage");
+        const nameField = document.getElementById("id_name");
+        const priceField = document.getElementById("id_price_per_hour");
+        const descriptionField = document.getElementById("id_description");
+
+        const levelPrices = {
+            beginner: "£20/hour",
+            intermediate: "£40/hour",
+            advanced: "£60/hour",
+        };
+
+        function getArticle(word) {
+            const vowels = ['a', 'e', 'i', 'o', 'u'];
+            return vowels.includes(word[0].toLowerCase()) ? 'an' : 'a';
+        }
+
+        function updateFields() {
+            const level = levelField.value;
+            const expertise = expertiseField.options[expertiseField.selectedIndex]?.text;
+
+            if (level && expertise) {
+                const article = getArticle(level);
+
+                nameField.value = `${expertise} ${level.charAt(0).toUpperCase() + level.slice(1)} Course`;
+                priceField.value = levelPrices[level];
+                descriptionField.value = `This is ${article} ${level.toLowerCase()} course for ${expertise}`;
+            } else {
+                nameField.value = "";
+                priceField.value = "";
+                descriptionField.value = "";
+            }
+        }
+
+        levelField.addEventListener("change", updateFields);
+        expertiseField.addEventListener("change", updateFields);
+    });
+</script>
+{% endblock %}

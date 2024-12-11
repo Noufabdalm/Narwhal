@@ -5,7 +5,6 @@ from django.core.exceptions import ValidationError
 
 
 class CourseModelTestCase(TestCase):
-    """Unit tests for the Course model."""
 
     def setUp(self):
         self.expertise = Expertise.objects.create(name='python')
@@ -14,8 +13,6 @@ class CourseModelTestCase(TestCase):
             description="Learn Python from scratch.",
             level="beginner",
             price_per_hour=20.0,
-            duration_minutes=60,
-            frequency="weekly",
             ProgrammingLanguage=self.expertise
         )
 
@@ -33,10 +30,6 @@ class CourseModelTestCase(TestCase):
     def test_course_price_per_hour_must_be_positive(self):
         self.course.price_per_hour = -10.0
         self._assert_course_is_invalid()
-
-    def test_calculate_term_cost(self):
-        term_cost = self.course.calculate_term_cost()
-        self.assertEqual(term_cost, 240.0)  # 12 lessons * 60 mins * 20.0 per hour
 
     def _assert_course_is_valid(self):
         try:

@@ -4,7 +4,6 @@ from tutorials.models import User, Tutor, Expertise
 from django.core.exceptions import ValidationError
 
 class TutorModelTestCase(TestCase):
-    """Unit tests for the Tutor model."""
 
     def setUp(self):
         self.user = User.objects.create_user(

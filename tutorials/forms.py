@@ -2,7 +2,7 @@
 from django import forms
 from django.contrib.auth import authenticate
 from django.core.validators import RegexValidator
-from .models import User
+from .models import User, Expertise, LessonRequest, Student, TutorSession, Term, Course
 
 class LogInForm(forms.Form):
     """Form enabling registered users to log in."""
@@ -108,3 +108,120 @@ class SignUpForm(NewPasswordMixin, forms.ModelForm):
             password=self.cleaned_data.get('new_password'),
         )
         return user
+
+
+class CourseForm(forms.ModelForm):
+    class Meta:
+        model = Course
+        fields = ['name', 'description', 'level', 'price_per_hour', 'ProgrammingLanguage']
+
+class ExpertiseForm(forms.ModelForm):
+    class Meta:
+        model = Expertise
+        fields = ['name']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter expertise name'}),
+        }
+
+
+class LessonRequestForm(forms.Form):
+    """Form to request a new lesson by specifying the preferred time, language, and type of lesson."""
+    
+    course = forms.ModelChoiceField(
+        queryset=Course.objects.all(),  
+        empty_label="Select a Course",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    frequency = forms.ChoiceField(
+        choices=TutorSession.FREQUENCY_CHOICES,
+        label="Frequency",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    term = forms.ModelChoiceField(
+        queryset=Term.objects.all(),
+        label="Term",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+
+    duration_minutes = forms.ChoiceField(
+        choices=TutorSession.DURATION_CHOICES,
+        label="Duration Minutes",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+     
+
+"""LESSON BOOKING FORMS START"""
+
+class StudentSelectionForm(forms.Form):
+    student = forms.ModelChoiceField(
+        queryset=Student.objects.all(),
+        label="Select a Student",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        required=True,
+    )
+
+class RequestSelectionForm(forms.Form):
+    request = forms.ModelChoiceField(
+        queryset=LessonRequest.objects.none(),  # Queryset populated dynamically
+        label="Select a Request",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        required=True,
+    )
+
+class SessionSelectionForm(forms.Form):
+    session = forms.ModelChoiceField(
+        queryset=TutorSession.objects.none(),  # Queryset populated dynamically
+        label="Select a Session",
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        required=False,
+    )
+
+"""LESSON BOOKING FORMS END"""
+
+class CourseForm(forms.ModelForm):
+    class Meta:
+        model = Course
+        fields = ['level', 'ProgrammingLanguage']
+
+    def clean(self):
+        cleaned_data = super().clean()
+        level = cleaned_data.get('level')
+        expertise = cleaned_data.get('ProgrammingLanguage')
+
+        LEVEL_PRICES = {
+            'beginner': 20.0,
+            'intermediate': 40.0,
+            'advanced': 60.0,
+        }
+        def get_article(word):
+            if word[0].lower() in 'aeiou':
+                return 'an'
+            return 'a'
+
+        if level and expertise:
+            cleaned_data['name'] = f"{expertise.name.capitalize()} {level.capitalize()} Course"
+            article = get_article(level)
+            cleaned_data['description'] = f"This is {article} {level.lower()} course for {expertise.name.capitalize()}"
+            cleaned_data['price_per_hour'] = LEVEL_PRICES[level]
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        course = super().save(commit=False)
+        course.name = self.cleaned_data['name']
+        course.description = self.cleaned_data['description']
+        course.price_per_hour = self.cleaned_data['price_per_hour']
+        if commit:
+            course.save()
+        return course
+
+class ExpertiseForm(forms.ModelForm):
+    class Meta:
+        model = Expertise
+        fields = ['name']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter expertise name'}),
+        }
+

@@ -1,0 +1,16 @@
+{% extends "base_content.html" %}
+
+{% block content %}
+  <h2>Request a Lesson</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Submit Request</button>
+  </form>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert {{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endblock %}

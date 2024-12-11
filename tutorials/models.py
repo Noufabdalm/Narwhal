@@ -4,7 +4,10 @@ from django.db import models
 from libgravatar import Gravatar
 from django.utils.timezone import now
 from datetime import time, timedelta
+import datetime
 from django.core.exceptions import ValidationError
+from decimal import Decimal
+
 
 class User(AbstractUser):
     """Model used for user authentication, and team member related information."""
@@ -65,6 +68,16 @@ class Student(models.Model):
     def enrolled_courses(self):
         """Get all courses the student is enrolled in via lessons."""
         return Course.objects.filter(lessons__student=self)
+        
+    def assigned_tutors_and_sessions(self):
+        lessons = Lesson.objects.filter(student=self).select_related('session', 'tutor')
+        return [(lesson.session, lesson.tutor) for lesson in lessons]
+
+    def pending_requests(self):
+        return LessonRequest.objects.filter(status='pending')
+    
+    def upcoming_lessons(self):
+        pass
 
 
 class Expertise(models.Model):
@@ -76,7 +89,6 @@ class Expertise(models.Model):
         if Expertise.objects.filter(name__iexact=self.name).exclude(pk=self.pk).exists():
             raise ValidationError(f"Expertise '{self.name}' already exists.")
 
-   
     def save(self, *args, **kwargs):
         self.name = self.name.lower()
         self.clean
@@ -85,6 +97,11 @@ class Expertise(models.Model):
     def __str__(self):
         # Capitalize the first letter for display purposes
         return self.name.capitalize()
+
+    def tutors_with_expertise(self):
+     """Return all tutors who have this expertise."""
+     pass
+
 
 class Tutor(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="tutor_profile")
@@ -100,20 +117,11 @@ class Course(models.Model):
         ('intermediate', 'Intermediate'),
         ('advanced', 'Advanced'),
     ]
-    FREQUENCY_CHOICES = [
-        ('weekly', 'Weekly'),
-        ('fortnightly', 'Every Two Weeks'),
-    ]
 
     PRICE_CHOICES = [
     (20.0, "Beginner: £20/hour"),
     (40.0, "Intermediate: £40/hour"),
     (60.0, "Advanced: £60/hour"),
-    ]
-
-    DURATION_CHOICES = [
-        (60, "1 Hour"),
-        (120, "2 Hours"),
     ]
 
     name = models.CharField(max_length=100)
@@ -124,13 +132,7 @@ class Course(models.Model):
         decimal_places=2, 
         choices=PRICE_CHOICES
     )
-    duration_minutes = models.PositiveIntegerField(choices=DURATION_CHOICES)
-    frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES)
     ProgrammingLanguage = models.ForeignKey('Expertise', on_delete=models.CASCADE, related_name='courses', null=True)
-
-    def calculate_term_cost(self):
-        lessons_per_term = 12 if self.frequency == 'weekly' else 6
-        return (self.duration_minutes/60.0)*self.price_per_hour * lessons_per_term
     
     def qualifiedTutors(self):
         return Tutor.objects.filter(
@@ -153,6 +155,17 @@ class Term(models.Model):
 
     def __str__(self):
         return self.get_name_display()
+    
+    def clean(self):
+        """Validate that the name field matches one of the TERM_CHOICES."""
+        valid_choices = [choice[0] for choice in self.TERM_CHOICES]
+        if self.name not in valid_choices:
+            raise ValidationError(f"{self.name} is not a valid term name.")
+
+    def save(self, *args, **kwargs):
+        """Override save to call clean before saving."""
+        self.clean()
+        super().save(*args, **kwargs)
 
 
 class TutorSession(models.Model):
@@ -172,14 +185,26 @@ class TutorSession(models.Model):
         (4, "Friday")
     ]
 
+    FREQUENCY_CHOICES = [
+        ('weekly', 'Weekly'),
+        ('fortnightly', 'Every Two Weeks'),
+    ]
+    DURATION_CHOICES = [
+        (60, "1 Hour"),
+        (120, "2 Hours"),
+    ]
+
+
     tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name="Tutor_Sessions")
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="Course_Sessions")
+    #course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="Course_Sessions")
     time = models.TimeField(choices=TIME_CHOICES)
+    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='Term_Sessions')
     start_day = models.IntegerField(choices=WEEKDAY_CHOICES, default=0)
     start_date = models.DateField(null=True, blank=True) 
-    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='Term_Sessions')
+    end_date = models.DateField(null=True, blank=True) 
+    duration_minutes = models.PositiveIntegerField(choices=DURATION_CHOICES, default=60)
+    frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, default ='weekly')
     is_booked = models.BooleanField(default=False)
-
 
     def calculate_start_date(self):
         """Calculate the first occurrence of the desired weekday in the term (excluding weekends)."""
@@ -188,14 +213,44 @@ class TutorSession(models.Model):
         delta_days = (self.start_day - term_start.weekday()) % 7
         calculated_date = term_start +  timedelta(days=delta_days)
 
+        if calculated_date > self.term.end_date:
+            raise ValueError("The calculated start date is beyond the term's end date.")
 
+        return calculated_date
+
+    def calculate_end_date(self):
+        if not self.start_date:
+            raise ValueError("Start date must be defined to calculate the end date.")
+        
+        # Determine the session interval based on frequency
+        if(self.frequency == 'weekly'):
+            session_interval = 7  
+        else:
+            session_interval = 14
+
+        # Start from the initial session date
+        current_date = self.start_date
+
+        # Iterate to find the last valid session date within the term
+        while current_date + timedelta(days=session_interval) <= self.term.end_date:
+            current_date += timedelta(days=session_interval)
+
+        return current_date
     
-    #This method need to be checked
+    def calculate_term_cost(self, course):
+        lessons_per_term = 12 if self.frequency == 'weekly' else 6
+        # Convert all components to Decimal
+        duration_in_hours = Decimal(self.duration_minutes) / Decimal(60)  # Convert minutes to hours as Decimal
+        price_per_hour = Decimal(course.price_per_hour)  # Ensure course price per hour is a Decimal
+        lessons = Decimal(lessons_per_term)  # Convert lessons_per_term to Decimal
+        # Perform the calculation
+        total_cost = duration_in_hours * price_per_hour * lessons
+        return total_cost
+
     def clean(self):
         # Check for duplicate sessions
         if TutorSession.objects.filter(
             tutor=self.tutor,
-            course=self.course,
             time=self.time,
             start_date=self.start_date,
             term=self.term,
@@ -206,32 +261,50 @@ class TutorSession(models.Model):
     def save(self, *args, **kwargs):
         if not self.start_date:
             self.start_date = self.calculate_start_date() 
+        if self.start_date:
+            self.end_date = self.calculate_end_date()
         self.clean()  # Validate before saving
         super().save(*args, **kwargs)
 
     def __str__(self):
         status = "Booked" if self.is_booked else "Available"
-        return f"{self.tutor.user.username} - {self.course.name} ({status})"
+        return f"{self.tutor.user.username} -({status})"
 
 
 class LessonRequest(models.Model):
     """Model for managing student lesson requests."""
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='lesson_requests')
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lesson_requests')
-    frequency = models.CharField(max_length=20, choices=Course.FREQUENCY_CHOICES)
-    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='lesson_requests')
-    status = models.CharField(
-        max_length=20,
-        choices=[
+    STATUS_CHOICES=[
             ('pending', 'Pending'),
             ('allocated', 'Allocated'),
             ('rejected', 'Rejected'),
-        ],
+        ]
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='lesson_requests')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lesson_requests')
+    frequency = models.CharField(max_length=20, choices=TutorSession.FREQUENCY_CHOICES)
+    duration_minutes = models.PositiveIntegerField(choices=TutorSession.DURATION_CHOICES, default=60)
+    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='lesson_requests')
+    status = models.CharField(
+        max_length=20,
+        choices= STATUS_CHOICES,
         default='pending'
     )
+    # Flag to determine if the request is late or not
+    is_late = models.BooleanField(default=False)
+    requested_date = models.DateField(default=datetime.date.today)
+    rejection_reason = models.TextField(null=True, blank= True)
+
 
     def __str__(self):
         return f"Request by {self.student.user.username} for {self.course.name} ({self.term.name})"
+
+    def check_and_mark_late(self):
+        """
+        Checks if the request is late based on the term start date and marks it as late if applicable.
+        """
+        days_until_term_starts = (self.term.start_date - now().date()).days
+        if days_until_term_starts < 14:
+            self.is_late = True
+        
 
     def get_available_tutor_sessions(self):
         """
@@ -241,21 +314,34 @@ class LessonRequest(models.Model):
             course=self.course,
             term=self.term,
             frequency=self.frequency,
+            duration_minutes=self.duration_minutes,
             is_booked=False
         )
+    
+    def save(self, *args, **kwargs):
+        """
+        Override the save method to check if the request is late before saving.
+        """
+        self.check_and_mark_late()
+        super().save(*args, **kwargs)
+    
+    
+        
 
 
-#The following models are not finalized yet --please ignore
 class Lesson(models.Model):
     """Model for Booking lessons."""
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='lessons')
     tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='lessons')
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lessons')
+    start_day = models.IntegerField(choices=TutorSession.WEEKDAY_CHOICES, default=0)
+    start_date = models.DateField(null=True, blank=True) 
+    end_date = models.DateField(null=True, blank=True) 
     session = models.ForeignKey(
         TutorSession,
         on_delete=models.CASCADE,
         related_name='lessons',
-        limit_choices_to=models.Q(is_booked=False)  # **Added limit_choices_to**
+        limit_choices_to=models.Q(is_booked=False)
     )
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='lessons')
     #Link lesson to a specific lesson request
@@ -264,6 +350,12 @@ class Lesson(models.Model):
         on_delete=models.CASCADE,
         related_name='allocated_lesson'
     )
+    rollover = models.BooleanField(default=True) # Student is going to take the model next term unless a change or cancellation is requested
+
+    def clean(self):
+        super().clean()
+        if self.course != self.request.course:
+            raise ValidationError("The course of the lesson must match the course of the lesson request.")
 
     def __str__(self):
         return f"Lesson for {self.student.user.username} with {self.tutor.user.username}"
@@ -272,8 +364,13 @@ class Lesson(models.Model):
         """
         Ensure session gets marked as booked and the request status updated to 'allocated'.
         """
+        self.clean()
         self.session.is_booked = True
         self.session.save()
+
+        self.start_day = self.session.start_day
+        self.start_date = self.session.start_date
+        self.end_date = self.session.end_date
 
         if self.request:
             self.request.status = 'allocated'
@@ -282,13 +379,11 @@ class Lesson(models.Model):
         super().save(*args, **kwargs)
 
 
-
-"""
 class Invoice(models.Model):
-    
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='invoices')
-    total_amount = models.DecimalField(max_digits=7, decimal_places=2)
-    due_date = models.DateField()
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='invoice')
+    total_amount = models.DecimalField(max_digits=7, decimal_places=2, blank=True, null=True)
+    due_date = models.DateField(blank=True, null=True)
     status = models.CharField(
         max_length=20,
         choices=[
@@ -297,18 +392,24 @@ class Invoice(models.Model):
         ],
         default='unpaid'
     )
-    date_created = models.DateTimeField(auto_now_add=True)
-
-    def calculate_total(self):
-      
-        total_cost = sum(
-            lesson.session.course.price_per_hour * (lesson.session.course.duration_minutes / 60)
-            for lesson in self.lessons.all()
-        )
-        self.total_amount = total_cost
-        self.save()
-        return self.total_amount
 
     def __str__(self):
         return f"Invoice for {self.student.user.username} ({self.status})"
-"""
+    
+    @classmethod
+    def get_invoice_details(cls):
+        """
+        Returns a dictionary containing invoice status and amount for each student and lesson.
+        """
+        invoice_details = []
+        for invoice in cls.objects.select_related('student', 'lesson').all():
+            invoice_details.append({
+                'student': invoice.student.user.get_full_name(),
+                'lesson': str(invoice.lesson),  # Assuming the Lesson model has a meaningful __str__ method
+                'status': invoice.status,
+                'amount': invoice.total_amount,
+            })
+        return invoice_details
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)

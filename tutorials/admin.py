@@ -1,90 +1,106 @@
 from django.contrib import admin
-from .models import User, Admin, Student, Expertise, Tutor, Course, Term, TutorSession, LessonRequest, Lesson
-
+from .models import (
+    User, Admin, Student, Expertise, Tutor,
+    Course, Term, TutorSession, LessonRequest, Lesson,Invoice
+)
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('username', 'first_name', 'last_name', 'email', 'is_staff', 'is_superuser')
+    """Admin interface for User model."""
+    list_display = ('username', 'full_name', 'email', 'is_staff', 'is_active')
     search_fields = ('username', 'first_name', 'last_name', 'email')
-    list_filter = ('is_staff', 'is_superuser', 'is_active')
+    list_filter = ('is_staff', 'is_active', 'date_joined')
     ordering = ('last_name', 'first_name')
 
 
 @admin.register(Admin)
 class AdminAdmin(admin.ModelAdmin):
+    """Admin interface for Admin model."""
     list_display = ('user',)
-    search_fields = ('user__username', 'user__email')
+    search_fields = ('user__username', 'user__first_name', 'user__last_name')
 
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
+    """Admin interface for Student model."""
     list_display = ('user', 'learning_level')
-    search_fields = ('user__username', 'user__email', 'learning_level')
+    search_fields = ('user__username', 'user__first_name', 'user__last_name')
     list_filter = ('learning_level',)
 
 
 @admin.register(Expertise)
 class ExpertiseAdmin(admin.ModelAdmin):
+    """Admin interface for Expertise model."""
     list_display = ('name',)
     search_fields = ('name',)
 
 
 @admin.register(Tutor)
 class TutorAdmin(admin.ModelAdmin):
-    list_display = ('user', 'display_expertise')
-    search_fields = ('user__username', 'user__email', 'expertise__name')
+    """Admin interface for Tutor model."""
+    list_display = ('user', 'get_expertise')
+    search_fields = ('user__username', 'user__first_name', 'user__last_name')
     filter_horizontal = ('expertise',)
 
-    def display_expertise(self, obj):
-        return ", ".join([exp.name.capitalize() for exp in obj.expertise.all()])
-    display_expertise.short_description = 'Expertise'
+    def get_expertise(self, obj):
+        return ", ".join([expertise.name.capitalize() for expertise in obj.expertise.all()])
+    get_expertise.short_description = 'Expertise'
 
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ('name', 'level', 'price_per_hour', 'duration_minutes', 'frequency', 'ProgrammingLanguage')
-    search_fields = ('name', 'level', 'ProgrammingLanguage__name')
-    list_filter = ('level', 'frequency', 'ProgrammingLanguage')
+    """Admin interface for Course model."""
+    list_display = ('name', 'level', 'price_per_hour', 'ProgrammingLanguage')
+    search_fields = ('name', 'description')
+    list_filter = ('level', 'price_per_hour', 'ProgrammingLanguage')
 
 
 @admin.register(Term)
 class TermAdmin(admin.ModelAdmin):
+    """Admin interface for Term model."""
     list_display = ('name', 'start_date', 'end_date')
     search_fields = ('name',)
-    list_filter = ('name',)
+    list_filter = ('start_date', 'end_date')
 
 
 @admin.register(TutorSession)
 class TutorSessionAdmin(admin.ModelAdmin):
-    list_display = ('tutor', 'course', 'time', 'start_day', 'start_date', 'term', 'is_booked')
-    search_fields = ('tutor__user__username', 'course__name', 'term__name')
-    list_filter = ('term', 'is_booked', 'start_day', 'time')
-    ordering = ('term', 'time', 'start_date')
+    """Admin interface for TutorSession model."""
+    list_display = ('tutor', 'term', 'time', 'start_date','end_date', 'is_booked', 'frequency', 'duration_minutes')
+    search_fields = ('tutor__user__username', 'term__name')
+    list_filter = ('is_booked', 'frequency', 'duration_minutes', 'term')
+    ordering = ('term', 'start_date', 'time')
 
 
 @admin.register(LessonRequest)
 class LessonRequestAdmin(admin.ModelAdmin):
-    list_display = ('student', 'course', 'frequency', 'term', 'status')
+    """Admin interface for LessonRequest model."""
+    list_display = ('student', 'course', 'frequency', 'term', 'status','is_late')
     search_fields = ('student__user__username', 'course__name', 'term__name')
-    list_filter = ('status', 'term', 'frequency')
-    ordering = ('term', 'status')
-
-    def student(self, obj):
-        return obj.student.user.full_name()
-    student.short_description = 'Student Name'
+    list_filter = ('status', 'frequency', 'term')
+    ordering = ('term',)
 
 
 @admin.register(Lesson)
 class LessonAdmin(admin.ModelAdmin):
-    list_display = ('student_name', 'tutor_name', 'course', 'session', 'term')
+    """Admin interface for Lesson model."""
+    list_display = ('student', 'tutor', 'course','start_date','end_date', 'session', 'term', 'request')
     search_fields = ('student__user__username', 'tutor__user__username', 'course__name', 'term__name')
-    list_filter = ('term', 'course')
-    ordering = ('term', 'course')
+    list_filter = ('term',)
+    ordering = ('term',)
 
-    def student_name(self, obj):
-        return obj.student.user.full_name()
-    student_name.short_description = 'Student'
+@admin.register(Invoice)
+class InvoiceAdmin(admin.ModelAdmin):
+    list_display = ('student', 'lesson', 'total_amount', 'due_date', 'status')
+    list_filter = ('status', 'due_date')
+    search_fields = ('student__user__username', 'lesson__course__name')
+    readonly_fields = ('total_amount', 'due_date')  # Make calculated fields readonly in admin
+    fieldsets = (
+        (None, {
+            'fields': ('student', 'lesson', 'status')
+        }),
+        ('Calculated Fields', {
+            'fields': ('total_amount', 'due_date'),
+        }),
+    )
 
-    def tutor_name(self, obj):
-        return obj.tutor.user.full_name()
-    tutor_name.short_description = 'Tutor'
