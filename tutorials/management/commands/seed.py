@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
-from tutorials.models import User, Tutor, Student, Expertise, Course, Term
+from tutorials.models import User, Tutor, Student, Expertise, Course, Term, Lesson, LessonRequest, CancellationRequest, TutorSession,Invoice
 from datetime import date
+from decimal import Decimal
 from faker import Faker
 from random import randint, choice, sample
 
@@ -23,6 +24,9 @@ class Command(BaseCommand):
     STUDENT_COUNT = 15
     DEFAULT_PASSWORD = 'Password123'
     help = 'Seeds the database with sample data'
+    MAX_SESSIONS_PER_TUTOR = 10
+    MAX_REQUESTS_PER_STUDENT = 5
+    MAX_ALLOCATED_LESSONS = 3
 
     def __init__(self):
         self.faker = Faker('en_GB')
@@ -35,6 +39,11 @@ class Command(BaseCommand):
         self.create_students()
         self.create_courses()
         self.create_terms()
+        self.create_sessions()
+        self.create_lesson_requests()
+        self.create_lessons()
+        self.create_invoices()
+        self.create_cancellation_requests()
 
     def create_users(self):
         print("Seeding users...")
@@ -147,6 +156,92 @@ class Command(BaseCommand):
         # Choose a random number of skills between 1 and 10
         NumberOfSkills = randint(1, 10)
         return sample(expertise_list, k=NumberOfSkills)  # Sample this number from the full list of expertise
+    def create_sessions(self):
+        print("Seeding tutor sessions...")
+        terms = Term.objects.all()
+        tutors = Tutor.objects.all()
+        for tutor in tutors:
+            for term in terms:
+                session_count = randint(1, self.MAX_SESSIONS_PER_TUTOR)
+                for _ in range(session_count):
+                    TutorSession.objects.create(
+                        tutor=tutor,
+                        time=self.faker.time(),
+                        term=term,
+                        start_day=randint(0, 4),  # Monday to Friday
+                        duration_minutes=choice([60, 120]),
+                        frequency=choice(['weekly', 'fortnightly']),
+                        is_booked=False,
+                    )
+        print("Tutor sessions seeding complete.")
+
+    def create_lesson_requests(self):
+        print("Seeding lesson requests...")
+        students = Student.objects.all()
+        courses = Course.objects.all()
+        terms = Term.objects.all()
+        for student in students:
+            request_count = randint(1, self.MAX_REQUESTS_PER_STUDENT)
+            for _ in range(request_count):
+                LessonRequest.objects.create(
+                    student=student,
+                    course=choice(courses),
+                    frequency=choice(['weekly', 'fortnightly']),
+                    duration_minutes=choice([60, 120]),
+                    term=choice(terms),
+                    status='pending'
+                )
+        print("Lesson requests seeding complete.")
+
+    def create_lessons(self):
+        print("Seeding lessons...")
+        lesson_requests = LessonRequest.objects.all()
+        for request in lesson_requests:
+            if randint(0, 1):  # Randomly allocate lessons
+                session = TutorSession.objects.filter(
+                    tutor__expertise=request.course.ProgrammingLanguage,
+                    term=request.term,
+                    is_booked=False
+                ).first()
+                if session:
+                    Lesson.objects.create(
+                        student=request.student,
+                        tutor=session.tutor,
+                        course=request.course,
+                        session=session,
+                        term=request.term,
+                        request=request,
+                        status='active',
+                    )
+                    session.is_booked = True
+                    session.save()
+        print("Lessons seeding complete.")
+
+    def create_invoices(self):
+        print("Seeding invoices...")
+        lessons = Lesson.objects.all()
+        for lesson in lessons:
+            Invoice.objects.create(
+                student=lesson.student,
+                lesson=lesson,
+                total_amount=Decimal(lesson.session.calculate_term_cost(lesson.course)),
+                due_date=lesson.session.start_date,
+                status='unpaid'
+            )
+        print("Invoices seeding complete.")
+
+    def create_cancellation_requests(self):
+        print("Seeding cancellation requests...")
+        lessons = Lesson.objects.all()
+        for lesson in lessons:
+            if randint(0, 1):  # Randomly create cancellation requests
+                CancellationRequest.objects.create(
+                    user=lesson.student.user,
+                    lesson=lesson,
+                    reason=self.faker.text(max_nb_chars=200),
+                    status='pending'
+                )
+        print("Cancellation requests seeding complete.")
 
     def get_unassigned_user(self):
         user = User.objects.filter(
