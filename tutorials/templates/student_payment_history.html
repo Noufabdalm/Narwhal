@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Payment History</h1>
+
+<!-- Filter Form -->
+<form method="get" class="filter-form">
+    <label for="status">Filter by Status:</label>
+    <select name="status" id="status">
+        <option value="" {% if not status_filter %}selected{% endif %}>All</option>
+        <option value="paid" {% if status_filter == "paid" %}selected{% endif %}>Paid</option>
+        <option value="unpaid" {% if status_filter == "unpaid" %}selected{% endif %}>Unpaid</option>
+    </select>
+    <button type="submit">Filter</button>
+</form>
+
+<!-- Table for Payment History -->
+<table>
+    <thead>
+        <tr>
+            <th>Lesson</th>
+            <th>Total Amount</th>
+            <th>Due Date</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for invoice in invoices %}
+        <tr>
+            <td>{{ invoice.lesson }}</td>
+            <td>£{{ invoice.total_amount }}</td>
+            <td>{{ invoice.due_date }}</td>
+            <td>{{ invoice.get_status_display }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4">No invoices found.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

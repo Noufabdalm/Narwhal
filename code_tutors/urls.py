@@ -54,7 +54,7 @@ urlpatterns = [
     path('manage-lesson-requests/', views.manage_lesson_requests, name='manage_lesson_requests'),
     path('allocated_lessons/', views.allocated_lessons_view, name='allocated_lessons'),
     path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
-
+    path('payment-history/', views.student_payment_history_view, name='student_payment_history'),
     
 
 ]
