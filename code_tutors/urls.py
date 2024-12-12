@@ -57,21 +57,13 @@ urlpatterns = [
     path('request_cancellation/', views.CancellationRequestView, name='cancellation_request'),
     path('manage_cancellation_requests/', views.manage_cancellation_requests, name='manage_cancellation_requests'),
     path('tutor_sign_up/', views.TutorSignUpView.as_view(), name='tutor_sign_up'),
-<<<<<<< HEAD
     path('my-courses/', views.student_courses_view, name='student_courses'),
     path('lesson-schedule/', views.student_lesson_schedule_view, name='student_lesson_schedule'),
     path('payment-history/', views.student_payment_history_view, name='student_payment_history'),
     path('admin-invoices/', views.admin_invoice_view, name='admin_invoice_view'),
     path('student_dashboard/', views.student_dashboard, name='student_dashboard'),
     path('tutor_dashboard/', views.tutor_dashboard, name='tutor_dashboard'),
-
-
-
-
-
-=======
     path('admin_tutor_sessions/', views.tutor_sessions_view, name='admin_tutor_sessions')
->>>>>>> ceea9f3fa9667f63d721ca5b8acf850b4d3f08dd
 ]
 
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
