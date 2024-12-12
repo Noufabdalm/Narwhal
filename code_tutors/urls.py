@@ -56,7 +56,7 @@ urlpatterns = [
     path('request_cancellation/', views.CancellationRequestView, name='cancellation_request'),
     path('manage_cancellation_requests/', views.manage_cancellation_requests, name='manage_cancellation_requests'),
     path('tutor_sign_up/', views.TutorSignUpView.as_view(), name='tutor_sign_up'),
-    path('tutor/sessions/', views.tutor_sessions_view, name='tutor_sessions'),
+   
 
 ]   
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -846,68 +846,6 @@ def manage_cancellation_requests(request):
     })
 
 
-class TutorSessionCreateView(LoginRequiredMixin, FormView): 
-    form_class = TutorSessionForm  
-    template_name = "tutor_session_add.html"
-    success_url = '/tutor/sessions/'
-
-    def post(self, request, *args, **kwargs):
-        form = self.form_class(request.POST)
-        if form.is_valid():
-            time = form.cleaned_data['time']
-            term = form.cleaned_data['term']
-            start_day = form.cleaned_data['start_day']
-            duration_minutes = form.cleaned_data['duration_minutes']
-            frequency = form.cleaned_data['frequency']
-
-            try:
-                tutor = Tutor.objects.get(user=request.user)
-            except Tutor.DoesNotExist:
-                messages.error(request, "You must be a registered tutor to add sessions.")
-                return redirect(self.success_url)
-
-            tutor_session = TutorSession(
-                tutor=tutor,
-                time=time,
-                term=term,
-                start_day=start_day,
-                duration_minutes=duration_minutes,
-                frequency=frequency,
-            )
-            
-            try:
-                tutor_session.save()  
-                messages.success(request, "Tutor session added successfully!")
-                return redirect(self.success_url)
-            except ValidationError as e:
-                print(f"Validation error: {e}")
-                messages.error(request, f"Error: {e}")
-                return render(request, self.template_name, {'form': form})
-
-        print(f"Form errors:{form.errors}")
-        messages.error(request, "Failed to add session. Please check the form.")
-        return render(request, self.template_name, {'form': form})
-
-    def get(self, request, *args, **kwargs):
-        form = self.form_class()
-        return render(request, self.template_name, {'form': form})
-
-        
-@login_required
-def tutor_dashboard(request):
-    """Display dashboard for tutors."""
-    if not hasattr(request.user, 'tutor_profile'):
-        messages.error(request, "You must be a tutor to access this page.")
-        return redirect('dashboard')  # avoid non-tutor acoount to access.
-
-    tutor = request.user.tutor_profile
-    sessions = TutorSession.objects.filter(tutor=tutor)
-
-    return render(request, 'tutor_dashboard.html', {
-        'tutor': tutor,
-        'sessions': sessions,
-    })
-
 
 def tutor_sessions_view(request):
     """Tutor can check all the added Tutor Sessions."""
