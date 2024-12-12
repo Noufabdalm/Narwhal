@@ -208,7 +208,7 @@ class StudentSelectionForm(forms.Form):
 
 class RequestSelectionForm(forms.Form):
     request = forms.ModelChoiceField(
-        queryset=LessonRequest.objects.none(),  # Queryset populated dynamically
+        queryset=LessonRequest.objects.none(), 
         label="Select a Request",
         widget=forms.Select(attrs={'class': 'form-control'}),
         required=True,
@@ -216,7 +216,7 @@ class RequestSelectionForm(forms.Form):
 
 class SessionSelectionForm(forms.Form):
     session = forms.ModelChoiceField(
-        queryset=TutorSession.objects.none(),  # Queryset populated dynamically
+        queryset=TutorSession.objects.none(),  
         label="Select a Session",
         widget=forms.Select(attrs={'class': 'form-control'}),
         required=False,

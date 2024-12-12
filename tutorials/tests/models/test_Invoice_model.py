@@ -58,7 +58,7 @@ class InvoiceModelTest(TestCase):
             term=cls.term,
             start_date=date(2025, 1, 10),
             start_day=0,  # Monday
-            time="09:00",
+            time="09:00:00",
             duration_minutes=60,
             is_booked=False
         )

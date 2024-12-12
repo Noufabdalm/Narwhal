@@ -53,7 +53,7 @@ class CancellationRequestTestCase(TestCase):
         # Create a session
         self.session = TutorSession.objects.create(
             tutor=self.tutor,
-            time="10:00",
+            time="10:00:00",
             term=self.term,
             start_day=1,
             start_date=self.term.start_date,
@@ -70,8 +70,7 @@ class CancellationRequestTestCase(TestCase):
             session=self.session,
             term=self.term,
             request=self.lesson_request,
-            rollover=True,
-            status="active"
+            rollover=True
         )
 
     def test_cancellation_request_creation(self):
@@ -113,12 +112,12 @@ class CancellationRequestTestCase(TestCase):
         cancellation_request.save()
 
         # Update lesson status
-        self.lesson.status = 'cancelled'
+        self.lesson.rollover = False
         self.lesson.save()
 
         # Assertions
         self.assertEqual(cancellation_request.status, "approved")
-        self.assertEqual(self.lesson.status, "cancelled")
+        self.assertFalse(self.lesson.rollover)
         self.assertEqual(self.lesson.request, self.lesson_request)
 
     def test_cancellation_request_rejection(self):
@@ -135,4 +134,4 @@ class CancellationRequestTestCase(TestCase):
 
         # Assertions
         self.assertEqual(cancellation_request.status, "rejected")
-        self.assertEqual(self.lesson.status, "active")
+        self.assertTrue(self.lesson.rollover)

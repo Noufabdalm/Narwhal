@@ -1,34 +1,42 @@
 from django.test import TestCase, Client
 from django.urls import reverse
-from tutorials.models import Student, LessonRequest, TutorSession, Term, Course, Lesson, Invoice, User,Tutor,Expertise
+from tutorials.models import Admin,Student, LessonRequest, TutorSession, Term, Course, Lesson, Invoice, User,Tutor,Expertise
 from datetime import date
 
 class LessonBookingViewsTest(TestCase):
     @classmethod
     def setUpTestData(cls):
-        # Create test user
-        cls.user = User.objects.create_user(
+        # Create admin
+        cls.admin_user = User.objects.create_user(
+            username="admin",
+            email="admin@example.com",
+            password="adminpassword",
+            first_name="Admin",
+            last_name="User",
+        )
+        cls.admin = Admin.objects.create(user=cls.admin_user)
+
+        # Create student 
+        cls.student_user = User.objects.create_user(
             username="teststudent",
             email="teststudent@example.com",
             password="password123",
             first_name="Test",
             last_name="Student",
         )
-        cls.user = User.objects.create_user(
-            username="testTutor",
-            email="testTutor@example.com",
+        cls.student = Student.objects.create(user=cls.student_user, learning_level="beginner")
+
+        # Create tutor 
+        cls.tutor_user = User.objects.create_user(
+            username="testtutor",
+            email="testtutor@example.com",
             password="password123",
             first_name="Test",
             last_name="Tutor",
         )
+        cls.tutor = Tutor.objects.create(user=cls.tutor_user)
 
-        #Create Student
-        cls.student = Student.objects.create(user=cls.user, learning_level="beginner")
-
-        #Create tutor
-        cls.tutor = Tutor.objects.create(user=cls.user)
-
-        #Create Expertise and add it to tutor's expertise
+        # Create expertise and add to tutor's expertise
         cls.expertise = Expertise.objects.create(name='python')
         cls.tutor.expertise.add(cls.expertise)
 
@@ -45,6 +53,7 @@ class LessonBookingViewsTest(TestCase):
             description="Introductory Python Course",
             level="beginner",
             price_per_hour=20,
+            ProgrammingLanguage=cls.expertise
         )
 
         # Create lesson request
@@ -59,7 +68,7 @@ class LessonBookingViewsTest(TestCase):
 
         # Create tutor session
         cls.tutor_session = TutorSession.objects.create(
-            tutor=cls.tutor,  
+            tutor=cls.tutor,
             time="10:00:00",
             term=cls.term,
             start_day=0,
@@ -72,8 +81,8 @@ class LessonBookingViewsTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.client.login(username="teststudent", password="password123")
-    
+        self.client.login(username="admin", password="adminpassword")
+
     # Test Step 1: Select Student View
     def test_select_student_view(self):
         response = self.client.get(reverse("select_student"))
@@ -137,7 +146,7 @@ class LessonBookingViewsTest(TestCase):
         session.save()
 
         response = self.client.post(reverse("confirm_booking"))
-        self.assertRedirects(response, reverse("dashboard"))
+        self.assertRedirects(response, reverse("manage_lesson_requests"))
         self.assertTrue(Lesson.objects.filter(student=self.student, session=self.tutor_session).exists())
         self.assertTrue(Invoice.objects.filter(student=self.student, lesson__session=self.tutor_session).exists())
 
@@ -157,7 +166,7 @@ class LessonBookingViewsTest(TestCase):
         session.save()
 
         response = self.client.post(reverse("reject_or_book_later"), data={"reject_request": True, "rejection_reason": "No available sessions"})
-        self.assertRedirects(response, reverse("dashboard"))
+        self.assertRedirects(response, reverse("manage_lesson_requests"))
         self.lesson_request.refresh_from_db()
         self.assertEqual(self.lesson_request.status, "rejected")
 
@@ -167,7 +176,7 @@ class LessonBookingViewsTest(TestCase):
         session.save()
 
         response = self.client.post(reverse("reject_or_book_later"), data={"book_later": True})
-        self.assertRedirects(response, reverse("dashboard"))
+        self.assertRedirects(response, reverse("manage_lesson_requests"))
         messages = list(response.wsgi_request._messages)
         self.assertEqual(str(messages[0]), "The request has been marked for booking later.")
 
