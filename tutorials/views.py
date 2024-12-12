@@ -880,9 +880,11 @@ class TutorSessionCreateView(LoginRequiredMixin, FormView):
                 messages.success(request, "Tutor session added successfully!")
                 return redirect(self.success_url)
             except ValidationError as e:
+                print(f"Validation error: {e}")
                 messages.error(request, f"Error: {e}")
                 return render(request, self.template_name, {'form': form})
 
+        print(f"Form errors:{form.errors}")
         messages.error(request, "Failed to add session. Please check the form.")
         return render(request, self.template_name, {'form': form})
 
