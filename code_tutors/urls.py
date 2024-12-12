@@ -59,10 +59,11 @@ urlpatterns = [
     path('tutor_sign_up/', views.TutorSignUpView.as_view(), name='tutor_sign_up'),
     path('my-courses/', views.student_courses_view, name='student_courses'),
     path('lesson-schedule/', views.student_lesson_schedule_view, name='student_lesson_schedule'),
-    path('tutor-schedule/', views.tutor_schedule_view, name='tutor_schedule'),
     path('payment-history/', views.student_payment_history_view, name='student_payment_history'),
     path('admin-invoices/', views.admin_invoice_view, name='admin_invoice_view'),
     path('student_dashboard/', views.student_dashboard, name='student_dashboard'),
+    path('tutor_dashboard/', views.tutor_dashboard, name='tutor_dashboard'),
+
 
 
 

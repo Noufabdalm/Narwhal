@@ -26,6 +26,7 @@ from django.db.models import Q
 
 
 
+
 # @login_required
 # def dashboard(request):
 #     """Display the current user's dashboard."""
@@ -44,15 +45,16 @@ def dashboard(request):
     """Display the current user's dashboard."""
     current_user = request.user
 
-    # Check if the user is a student or admin
     if hasattr(current_user, 'student_profile'):
         return redirect('student_dashboard')  # Redirect to student dashboard
     elif hasattr(current_user, 'admin_profile'):
         return redirect('admin_dashboard')  # Redirect to admin dashboard
+    elif hasattr(current_user, 'tutor_profile'):
+        return redirect('tutor_dashboard')  # Redirect to tutor dashboard
 
-    # Default redirection if the user is neither a student nor an admin
     messages.error(request, "Your account type is not authorized to access a dashboard.")
     return redirect('home')
+
 
 @login_required
 def student_courses_view(request):
@@ -163,6 +165,17 @@ def student_dashboard(request):
         'invoices': Invoice.objects.filter(student=student),
     }
     return render(request, 'student_dashboard.html', context)
+
+@login_required
+def tutor_dashboard(request):
+    """Tutor dashboard with summarized data and actions."""
+    tutor = request.user.tutor_profile  # Fetch the logged-in tutor's profile
+
+    context = {
+        'upcoming_lessons': Lesson.objects.filter(tutor=tutor, start_date__gte=timezone.now()).order_by('start_date')[:5],
+        'assigned_students': Student.objects.filter(lessons__tutor=tutor).distinct(),
+    }
+    return render(request, 'tutor_dashboard.html', context)
 
 @staff_member_required
 def admin_invoice_view(request):
