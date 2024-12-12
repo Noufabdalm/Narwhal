@@ -11,14 +11,13 @@ from django.views.generic.edit import FormView, UpdateView
 from django.urls import reverse
 from tutorials.forms import LogInForm, PasswordForm, UserForm, SignUpForm, LessonRequestForm, StudentSelectionForm,RequestSelectionForm,SessionSelectionForm, CancellationRequestForm, TutorSignUpForm
 from tutorials.helpers import login_prohibited
+from .models import Lesson
 from django.utils import timezone
 from datetime import timedelta
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Q
-
-
 from .models import Student, LessonRequest,Admin, TutorSession, Expertise,Lesson, Invoice , Tutor, Course, CancellationRequest, Term
 from .forms import CourseForm, ExpertiseForm
 from django.db.models import Prefetch
@@ -26,19 +25,180 @@ from django.core.paginator import Paginator
 
 
 
+
+
+# @login_required
+# def dashboard(request):
+#     """Display the current user's dashboard."""
+
+#     current_user = request.user
+#     # Check if the user is an admin
+#     is_admin = hasattr(current_user, 'admin_profile')
+
+#     context = {
+#         'is_admin': is_admin,
+#     }
+#     return render(request, 'dashboard.html', {'user': current_user})
+
 @login_required
 def dashboard(request):
     """Display the current user's dashboard."""
-
     current_user = request.user
-    # Check if the user is an admin
-    is_admin = hasattr(current_user, 'admin_profile')
+
+    if hasattr(current_user, 'student_profile'):
+        return redirect('student_dashboard')  # Redirect to student dashboard
+    elif hasattr(current_user, 'admin_profile'):
+        return redirect('admin_dashboard')  # Redirect to admin dashboard
+    elif hasattr(current_user, 'tutor_profile'):
+        return redirect('tutor_dashboard')  # Redirect to tutor dashboard
+
+    messages.error(request, "Your account type is not authorized to access a dashboard.")
+    return redirect('home')
+
+
+@login_required
+def student_courses_view(request):
+    """Display courses a student is enrolled in and their assigned tutors."""
+    try:
+        student = request.user.student_profile
+    except AttributeError:
+        messages.error(request, "You are not authorized to view this page.")
+        return redirect('dashboard')
+
+    lessons = Lesson.objects.filter(student=student)
+
+    if not lessons.exists():
+        messages.info(request, "You are not enrolled in any courses yet.")
+        return render(request, 'student_courses.html', {"courses_and_tutors": []})
+
+    courses_and_tutors = [
+        {
+            "course_name": lesson.course.name,
+            "tutor_name": lesson.tutor.user.full_name()
+        }
+        for lesson in lessons
+    ]
+
+    return render(request, 'student_courses.html', {"courses_and_tutors": courses_and_tutors})
+
+@login_required
+def student_lesson_schedule_view(request):
+    """Display the lesson schedule for the logged-in student, including tutor details."""
+    try:
+        student = request.user.student_profile
+    except AttributeError:
+        messages.error(request, "You are not authorized to view this page.")
+        return redirect('dashboard')
+
+    lessons = Lesson.objects.filter(student=student).order_by('session__time', 'session__start_date')
+
+    if not lessons.exists():
+        messages.info(request, "No lessons scheduled.")
+        return render(request, 'student_lesson_schedule.html', {"schedule": []})
+
+    schedule = [
+        {
+            "course_name": lesson.course.name,
+            "tutor_name": lesson.tutor.user.full_name(),
+            "time": lesson.session.time.strftime("%I:%M %p"),
+            "date": lesson.session.start_date.strftime("%Y-%m-%d"),
+            "term": lesson.term.name,
+        }
+        for lesson in lessons
+    ]
+
+    return render(request, 'student_lesson_schedule.html', {"schedule": schedule})
+
+@login_required
+def tutor_schedule_view(request):
+    """Display the schedule for the logged-in tutor, including assigned students and lesson details."""
+    try:
+        tutor = request.user.tutor_profile
+    except AttributeError:
+        messages.error(request, "You are not authorized to view this page.")
+        return redirect('dashboard')
+
+    lessons = Lesson.objects.filter(tutor=tutor).order_by('session__start_date', 'session__time')
+
+    if not lessons.exists():
+        messages.info(request, "No lessons scheduled.")
+        return render(request, 'tutor_schedule.html', {"schedule": []})
+
+    schedule = [
+        {
+            "course_name": lesson.course.name,
+            "student_name": lesson.student.user.full_name(),
+            "time": lesson.session.time.strftime("%I:%M %p"),
+            "date": lesson.session.start_date.strftime("%Y-%m-%d"),
+            "term": lesson.term.name,
+        }
+        for lesson in lessons
+    ]
+
+    return render(request, 'tutor_schedule.html', {"schedule": schedule})
+
+@login_required
+def student_payment_history_view(request):
+    """
+    View to display the payment history of the logged-in student, with optional status filtering.
+    """
+    invoices = Invoice.objects.filter(student__user=request.user).order_by('-due_date')
+
+    status_filter = request.GET.get('status')
+
+    if status_filter:
+        invoices = invoices.filter(status=status_filter)
+
+    return render(request, 'student_payment_history.html', {
+        'invoices': invoices,
+        'status_filter': status_filter,  
+    })
+
+@login_required
+def student_dashboard(request):
+    """Student dashboard with summarized data and actions."""
+    student = request.user.student_profile  # Fetch the logged-in student's profile
 
     context = {
-        'is_admin': is_admin,
+        'upcoming_classes': Lesson.objects.filter(student=student, start_date__gte=timezone.now()).order_by('start_date')[:5],
+        'enrolled_classes': student.enrolled_courses(),
+        'invoices': Invoice.objects.filter(student=student),
     }
-    return render(request, 'dashboard.html', {'user': current_user})
+    return render(request, 'student_dashboard.html', context)
 
+@login_required
+def tutor_dashboard(request):
+    """Tutor dashboard with summarized data and actions."""
+    tutor = request.user.tutor_profile  # Fetch the logged-in tutor's profile
+
+    context = {
+        'upcoming_lessons': Lesson.objects.filter(tutor=tutor, start_date__gte=timezone.now()).order_by('start_date')[:5],
+        'assigned_students': Student.objects.filter(lessons__tutor=tutor).distinct(),
+    }
+    return render(request, 'tutor_dashboard.html', context)
+
+@login_required
+def admin_invoice_view(request):
+    """
+    View for admin to view and filter invoices by status and student.
+    """
+    invoices = Invoice.objects.select_related('student__user', 'lesson').all()
+
+    # Get filters from request
+    status_filter = request.GET.get('status')
+    student_filter = request.GET.get('student')
+
+    # Apply filters if provided
+    if status_filter:
+        invoices = invoices.filter(status=status_filter)
+    if student_filter:
+        invoices = invoices.filter(student__user__username__icontains=student_filter)
+
+    return render(request, 'admin_invoice_view.html', {
+        'invoices': invoices,
+        'status_filter': status_filter,
+        'student_filter': student_filter,
+    })
 
 @login_prohibited
 def home(request):
