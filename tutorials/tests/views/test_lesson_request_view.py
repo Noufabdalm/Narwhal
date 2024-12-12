@@ -40,7 +40,6 @@ class LessonRequestViewTestCase(TestCase):
         # Create a TutorSession
         self.tutor_session = TutorSession.objects.create(
             tutor=self.tutor,
-            course=self.course,
             term=self.term,
             time=TutorSession.TIME_CHOICES[0][0],
             start_day=0,

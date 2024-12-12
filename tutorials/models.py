@@ -249,8 +249,9 @@ class TutorSession(models.Model):
         """Helper method to calculate the end time of the session.
             To use it to avoid overlapping sessions
          """
+        start_time = self.time if isinstance(self.time, time) else datetime.strptime(str(self.time), "%H:%M:%S").time()
         duration_delta = timedelta(minutes=self.duration_minutes)
-        start_datetime = datetime.datetime.combine(datetime.date.today(), self.time)
+        start_datetime = datetime.datetime.combine(datetime.date.today(), start_time)
         end_datetime = start_datetime + duration_delta
         return end_datetime.time()
 
@@ -467,5 +468,4 @@ class CancellationRequest(models.Model):
        
         self.check_and_mark_late()
         super().save(*args, **kwargs)
-        
-     #Comment to push 
+     #Comment to push

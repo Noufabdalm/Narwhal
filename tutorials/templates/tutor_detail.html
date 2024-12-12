@@ -5,35 +5,83 @@
   <p><strong>Email:</strong> {{ tutor.user.email }}</p>
 
   <h3>Expertise</h3>
-  <ul>
-    {% for expertise in expertise %}
-      <li>{{ expertise.name }}</li>
-    {% empty %}
-      <li>No expertise listed.</li>
-    {% endfor %}
-  </ul>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Expertise Name</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for expertise in expertise %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ expertise.name }}</td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="2">No expertise listed.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
   <h3>Available Sessions</h3>
-  <ul>
-    {% for session in available_sessions %}
-      <li>{{ session.course.name }} - {{ session.time|date:"H:i" }} on {{ session.start_date }}</li>
-    {% empty %}
-      <li>No available sessions.</li>
-    {% endfor %}
-  </ul>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Course</th>
+        <th>Time</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for session in available_sessions %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ session.course.name }}</td>
+          <td>{{ session.time|date:"H:i" }}</td>
+          <td>{{ session.start_date }}</td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="4">No available sessions.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
   <h3>Booked Sessions</h3>
-  <ul>
-  {% for session in booked_sessions %}
-    <li>
-      <strong>Course:</strong> {{ session.course.name }}<br>
-      <strong>Time:</strong> {{ session.time|date:"H:i" }} on {{ session.start_date }}<br>
-      <strong>Students:</strong> {{ session.lessons.first.student.user.full_name }} ({{ session.lessons.first.student.user.email }})
-    </li>
-  {% empty %}
-    <li>No booked sessions.</li>
-  {% endfor %}
-  </ul>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Course</th>
+        <th>Time</th>
+        <th>Date</th>
+        <th>Student</th>
+        <th>Email</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for session in booked_sessions %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ session.course.name }}</td>
+          <td>{{ session.time|date:"H:i" }}</td>
+          <td>{{ session.start_date }}</td>
+          <td>{{ session.lessons.first.student.user.full_name }}</td>
+          <td>{{ session.lessons.first.student.user.email }}</td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="6">No booked sessions.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
   <a href="{{ back_url }}" class="btn btn-secondary">Back</a>
 </div>
 {% endblock %}

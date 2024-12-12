@@ -1,7 +1,10 @@
 {% extends 'base_content.html' %}
 {% block content %}
 <div class="container mt-4">
-    <h1>Courses List</h1>
+  <h1 class="d-flex justify-content-between align-items-center">
+    Course List
+    <a href="{% url 'admin_dashboard' %}" class="btn btn-primary">Back to Dashboard</a>
+  </h1>
 
     <!-- Filter Section -->
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">

@@ -4,16 +4,21 @@
 <div class="container mt-5">
   <h2 class="mb-4 d-flex justify-content-between align-items-center">
     Cancellation Requests
-    <a href="{% url 'dashboard' %}" class="btn btn-primary">Back to Dashboard</a>
+    <a href="{% url 'admin_dashboard' %}" class="btn btn-primary">Back to Dashboard</a>
   </h2>
 
+  <!-- Sorting Form -->
   <form method="get" class="mb-4">
-    <label for="sort" class="mt-3">Sort by:</label>
-    <select name="sort" id="sort" class="form-control" onchange="this.form.submit()">
-      <option value="status" {% if request.GET.sort == "status" %}selected{% endif %}>Status</option>
-      <option value="late_status" {% if request.GET.sort == "late_status" %}selected{% endif %}>Late Status</option>
-      <option value="request_date" {% if request.GET.sort == "request_date" %}selected{% endif %}>Request Date</option>
-    </select>
+    <div class="row g-3">
+      <!-- Sort By -->
+      <div class="col-md-3">
+        <label for="sort" class="form-label">Sort By</label>
+        <select name="sort" id="sort" class="form-select" onchange="this.form.submit()">
+          <option value="request_date" {% if sort_by == "request_date" %}selected{% endif %}>Request Date (Oldest)</option>
+          <option value="request_date_desc" {% if sort_by == "request_date_desc" %}selected{% endif %}>Request Date (Newest)</option>
+        </select>
+      </div>
+    </div>
   </form>
 
   {% if cancellation_requests %}
@@ -34,7 +39,13 @@
       {% for request in cancellation_requests %}
       <tr>
         <th scope="row">{{ forloop.counter }}</th>
-        <td>{{ request.user.full_name }}</td>
+        <td>
+          {% if request.lesson.student %}
+            {{ request.lesson.student.user.full_name }}
+          {% elif request.lesson.tutor %}
+            {{ request.lesson.tutor.user.full_name }}
+          {% endif %}
+        </td>
         <td>{{ request.lesson.course.name }} ({{ request.lesson.term.name }})</td>
         <td>{{ request.reason|truncatewords:10 }}</td>
         <td>{{ request.request_date|date:"d M Y" }}</td>
@@ -55,17 +66,17 @@
           {% endif %}
         </td>
         <td>
-            {% if request.status == 'pending' %}
-            <form method="post" action="{% url 'manage_cancellation_requests' %}">
-              {% csrf_token %}
-              <input type="hidden" name="request_id" value="{{ request.id }}">
-              <button type="submit" name="action" value="accept" class="btn btn-success btn-sm">Accept</button>
-              <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm">Reject</button>
-            </form>
-            {% else %}
-            <span class="text-muted">No actions available</span>
-            {% endif %}
-          </td>          
+          {% if request.status == 'pending' %}
+          <form method="post" action="{% url 'manage_cancellation_requests' %}" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="request_id" value="{{ request.id }}">
+            <button type="submit" name="action" value="accept" class="btn btn-success btn-sm">Accept</button>
+            <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm">Reject</button>
+          </form>
+          {% else %}
+          <span class="text-muted">No actions available</span>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -76,7 +87,7 @@
     <ul class="pagination">
       {% if page_obj.has_previous %}
       <li class="page-item">
-        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}" aria-label="Previous">
+        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if sort_by %}&sort={{ sort_by }}{% endif %}" aria-label="Previous">
           <span aria-hidden="true">&laquo;</span>
         </a>
       </li>
@@ -87,16 +98,16 @@
       <li class="page-item active">
         <span class="page-link">{{ num }}</span>
       </li>
-      {% elif num > page_obj.number|add:'-5' and num < page_obj.number|add:'5' %}
+      {% else %}
       <li class="page-item">
-        <a class="page-link" href="?page={{ num }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">{{ num }}</a>
+        <a class="page-link" href="?page={{ num }}{% if sort_by %}&sort={{ sort_by }}{% endif %}">{{ num }}</a>
       </li>
       {% endif %}
       {% endfor %}
 
       {% if page_obj.has_next %}
       <li class="page-item">
-        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}" aria-label="Next">
+        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if sort_by %}&sort={{ sort_by }}{% endif %}" aria-label="Next">
           <span aria-hidden="true">&raquo;</span>
         </a>
       </li>
