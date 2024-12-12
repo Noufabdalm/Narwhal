@@ -1,23 +1,53 @@
-<h1>Your Tutor Sessions</h1>
-{% for session in page_obj %}
-    <div>
-        <p><strong>Session Date:</strong> {{ session.start_date }}</p>
-        <p><strong>Time:</strong> {{ session.time }}</p>
-        <p><strong>Frequency:</strong> {{ session.get_frequency_display }}</p>
-        <p><strong>Duration:</strong> {{ session.duration_minutes }} minutes</p>
-        <p><strong>Status:</strong> {{ session.is_booked|yesno:"Booked,Available" }}</p>
-    </div>
-    <hr>
-{% empty %}
-    <p>No Tutor Sessions found.</p>
-{% endfor %}
+{% extends "base_content.html" %}
+{% block content %}
+<h1>My Sessions</h1>
 
-<div>
-    {% if page_obj.has_previous %}
-        <a href="?page={{ page_obj.previous_page_number }}">Previous</a>
-    {% endif %}
-    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-    {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}">Next</a>
-    {% endif %}
+{% if sessions %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>Term</th>
+            <th>Start Day</th>
+            <th>Duration</th>
+            <th>Frequency</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for session in sessions %}
+        <tr>
+            <td>{{ session.time }}</td>
+            <td>{{ session.term.name }}</td>
+            <td>{{ session.get_start_day_display }}</td>
+            <td>{{ session.get_duration_minutes_display }}</td>
+            <td>{{ session.get_frequency_display }}</td>
+            <td>{% if session.is_booked %}Booked{% else %}Available{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="pagination">
+    <span class="step-links">
+        {% if page_obj.has_previous %}
+            <a href="?page=1">&laquo; first</a>
+            <a href="?page={{ page_obj.previous_page_number }}">previous</a>
+        {% endif %}
+
+        <span class="current">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+        </span>
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}">next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
+        {% endif %}
+    </span>
 </div>
+{% else %}
+<p class="alert alert-info">You do not have any sessions now.</p>
+{% endif %}
+
+<a href="{% url 'tutor_dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+{% endblock %}

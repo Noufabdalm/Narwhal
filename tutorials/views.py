@@ -844,27 +844,6 @@ def manage_cancellation_requests(request):
         'page_obj': page_obj,
         'cancellation_requests': page_obj.object_list,
     })
-    
-@login_required
-def tutor_sessions_view(request):
-    """Tutor can check all the added Tutor Sessions."""
-    try:
-        tutor = request.user.tutor_profile
-    except AttributeError:
-        messages.error(request, 'Only tutors can access this page.')
-        return redirect('dashboard')
-
-    # check all Tutor Sessions
-    sessions = TutorSession.objects.filter(tutor=tutor).order_by('start_date', 'time')
-
-    paginator = Paginator(sessions, 10) 
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    return render(request, 'tutor_sessions.html', {
-        'page_obj': page_obj,
-        'sessions': page_obj.object_list,
-    })
 
 
 class TutorSessionCreateView(LoginRequiredMixin, FormView): 
@@ -925,4 +904,23 @@ def tutor_dashboard(request):
     return render(request, 'tutor_dashboard.html', {
         'tutor': tutor,
         'sessions': sessions,
+    })
+
+
+def tutor_sessions_view(request):
+    """Tutor can check all the added Tutor Sessions."""
+    try:
+        tutor = request.user.tutor_profile 
+    except AttributeError:
+        messages.error(request, 'Only tutors can access this page.')
+        return redirect('dashboard')
+
+    sessions = TutorSession.objects.filter(tutor=tutor).order_by('start_date', 'time')
+    paginator = Paginator(sessions, 10)  # 每页显示 10 个会话
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'tutor_sessions.html', {
+        'page_obj': page_obj,
+        'sessions': page_obj.object_list,
     })
