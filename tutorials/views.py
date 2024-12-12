@@ -17,11 +17,11 @@ from datetime import timedelta
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.contrib.admin.views.decorators import staff_member_required
-from .models import Student, LessonRequest,Admin, TutorSession, Expertise,Lesson, Invoice , Tutor, Course, CancellationRequest
+from django.db.models import Q
+from .models import Student, LessonRequest,Admin, TutorSession, Expertise,Lesson, Invoice , Tutor, Course, CancellationRequest, Term
 from .forms import CourseForm, ExpertiseForm
 from django.db.models import Prefetch
 from django.core.paginator import Paginator
-from django.db.models import Q
 
 
 
@@ -417,20 +417,120 @@ def allocated_lessons_view(request):
         # Ensure the logged-in user is a student
         admin = Admin.objects.get(user=request.user)
     except Admin.DoesNotExist:
-
         messages.error(request, "You must be an admin to access this page.")
         return redirect('dashboard')
     
-    lessons = Lesson.objects.filter(session__is_booked=True)  # Only allocated lessons
+    # Get filter values from GET parameters
+    term_filter = request.GET.get('term')
+    tutor_filter = request.GET.get('tutor')
+    frequency_filter = request.GET.get('frequency')
+    course_filter = request.GET.get('course')
+    duration_filter = request.GET.get('duration')
+    student_filter = request.GET.get('student')
+    
+    lessons = Lesson.objects.filter(session__is_booked=True) 
+
+     # Apply filters
+    if tutor_filter:
+        lessons = lessons.filter(tutor__id=tutor_filter)
+    if student_filter:
+        lessons = lessons.filter(student__id=student_filter)
+    if term_filter:
+        lessons = lessons.filter(term__id=term_filter)
+    if frequency_filter:
+        lessons = lessons.filter(frequency=frequency_filter)
+    if course_filter:
+        lessons = lessons.filter(course = course_filter)
+    if duration_filter:
+        lessons =lessons.filter(duration_minutes=duration_filter)
+
+
+    sort_by = request.GET.get('sort', 'start_date')  
+    allowed_sort_fields = {
+        'start_date': 'start_date',
+        'start_date_desc': '-start_date',
+        'end_date': 'end_date',
+        'end_date_desc': '-end_date',
+    }
+    if sort_by in allowed_sort_fields:
+        lessons = lessons.order_by(allowed_sort_fields[sort_by])
 
     # set 10 requests per page
     paginator = Paginator(lessons, 10)
     page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)   
+    page_obj = paginator.get_page(page_number)
+
+    students = Student.objects.all()
+    tutors = Tutor.objects.all()
+    terms = Term.objects.all()
+    courses = Course.objects.all()
+    frequencies = TutorSession.FREQUENCY_CHOICES
+    durations = TutorSession.DURATION_CHOICES
+
 
     return render(request, 'allocated_lessons.html', {
         'page_obj': page_obj,
-        'lesson_requests': page_obj.object_list,})
+        'lessons': page_obj.object_list,
+        'tutors': tutors,
+        'students': students,
+        'terms':terms,
+        'courses':courses,
+        'frequencies':frequencies,
+        'durations':durations
+
+        })
+
+
+
+def tutor_sessions_view(request):
+    """Admin view to display all allocated lessons."""
+    try:
+        # Ensure the logged-in user is an admin
+        admin = Admin.objects.get(user=request.user)
+    except Admin.DoesNotExist:
+        messages.error(request, "You must be an admin to access this page.")
+        return redirect('dashboard')
+
+    # Get filter values from GET parameters
+    term_filter = request.GET.get('term')
+    tutor_filter = request.GET.get('tutor')
+    frequency_filter = request.GET.get('frequency')
+    booked_filter = request.GET.get('booked')
+    duration_filter = request.GET.get('duration')
+
+    tutor_sessions = TutorSession.objects.all()
+
+    # Apply filters
+    if term_filter:
+        tutor_sessions = tutor_sessions.filter(term__id=term_filter)
+    if tutor_filter:
+        tutor_sessions = tutor_sessions.filter(tutor__id=tutor_filter)
+    if frequency_filter:
+        tutor_sessions = tutor_sessions.filter(frequency=frequency_filter)
+    if booked_filter in ['true', 'false']:
+        tutor_sessions = tutor_sessions.filter(is_booked=(booked_filter == 'true'))
+    if duration_filter:
+        tutor_sessions = tutor_sessions.filter(duration_minutes=duration_filter)
+
+    # Set 10 sessions per page
+    paginator = Paginator(tutor_sessions, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Pass filter options to the template
+    terms = Term.objects.all()
+    tutors = Tutor.objects.all()
+    frequencies = TutorSession.FREQUENCY_CHOICES
+    durations = TutorSession.DURATION_CHOICES
+
+    return render(request, 'admin_tutor_sessions.html', {
+        'page_obj': page_obj,
+        'tutor_sessions': page_obj.object_list,
+        'terms': terms,
+        'tutors': tutors,
+        'frequencies': frequencies,
+        'durations': durations
+    })
 
 
 @login_required
@@ -446,12 +546,11 @@ def student_lesson_requests(request):
     sort_by = request.GET.get('sort', 'requested_date')  # Default sort by requested_date
 
     allowed_sort_fields = {
-        'requested_date': 'requested_date',
-        'requested_date_desc': '-requested_date',
-        'term': 'term__start_date',
-        'term_desc': '-term__start_date',
-        'status': 'status',
-    }
+     'requested_date': 'requested_date',           
+     'requested_date_desc': '-requested_date',     
+     'term': 'term__start_date',                   
+     'term_desc': '-term__start_date',            
+ }
 
     # Sort the queryset based on the sort_by parameter, if valid
     if sort_by in allowed_sort_fields:
@@ -473,38 +572,70 @@ def student_lesson_requests(request):
 def manage_lesson_requests(request):
     """Admin view to display and manage all lesson requests."""
     try:
-        # Ensure the logged-in user is a student
         admin = Admin.objects.get(user=request.user)
     except Admin.DoesNotExist:
         messages.error(request, "You must be an admin to access this page.")
         return redirect('dashboard')
 
+    # Get filter values from GET parameters
+    term_filter = request.GET.get('term')
+    frequency_filter = request.GET.get('frequency')
+    course_filter = request.GET.get('course')
+    duration_filter = request.GET.get('duration')
+    student_filter = request.GET.get('student')
+    status_filter = request.GET.get('status')
+    
+    lesson_requests = LessonRequest.objects.filter() 
+
+     # Apply filters
+    if student_filter:
+        lesson_requests = lesson_requests.filter(student__id=student_filter)
+    if status_filter:
+        lesson_requests = lesson_requests.filter(status=status_filter)
+    if term_filter:
+        lesson_requests = lesson_requests.filter(term__id=term_filter)
+    if frequency_filter:
+        lesson_requests = lesson_requests.filter(frequency=frequency_filter)
+    if course_filter:
+        lesson_requests = lesson_requests.filter(course = course_filter)
+    if duration_filter:
+        lesson_requests = lesson_requests.filter(duration_minutes=duration_filter)
 
     sort_by = request.GET.get('sort', 'requested_date')  
 
     allowed_sort_fields = {
         'requested_date': 'requested_date',
         'requested_date_desc': '-requested_date',
-        'term': 'term__start_date',
-        'term_desc': '-term__start_date',
-        'status': 'status',
-        'late_status': '-is_late',  
-        'late_status_asc': 'is_late', 
     }
 
     if sort_by in allowed_sort_fields:
-        lesson_requests = LessonRequest.objects.all().order_by(allowed_sort_fields[sort_by])
+        lesson_requests = lesson_requests.order_by(allowed_sort_fields[sort_by])
     else:
-        lesson_requests = LessonRequest.objects.all().order_by('-id') 
+        lesson_requests = lesson_requests.order_by('-id') 
 
     # set 10 requests per page
     paginator = Paginator(lesson_requests, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)   
 
+    students = Student.objects.all()
+    courses = Course.objects.all()
+    terms = Term.objects.all()
+    durations = TutorSession.DURATION_CHOICES
+    frequencies = TutorSession.FREQUENCY_CHOICES
+    statuses = LessonRequest.STATUS_CHOICES
+
     return render(request, 'manage_lesson_requests.html', {
         'page_obj': page_obj,
-        'lesson_requests': page_obj.object_list,})
+        'lesson_requests': page_obj.object_list,
+        'frequencies': frequencies,
+        'courses': courses,
+        'durations': durations,
+        'students': students,
+        'statuses': statuses,
+        'terms': terms,
+        'sort_by': sort_by,
+    })
 
 
 """LESSON BOOKING VIEWS START"""
@@ -662,7 +793,7 @@ class ConfirmLessonBookingView(AdminRequiredMixin,FormView):
         lesson_request.save()
 
         messages.success(self.request, f"Lesson successfully booked. Invoice amount: ${invoice.total_amount:.2f}")
-        return redirect(reverse("dashboard"))
+        return redirect(reverse("manage_lesson_requests"))
 
 #Step 4 Reject Booking or snooze it for later (If there is no session)
 class RejectOrBookLaterView(AdminRequiredMixin,FormView):
@@ -696,12 +827,12 @@ class RejectOrBookLaterView(AdminRequiredMixin,FormView):
             lesson_request.save()
             messages.success(self.request, "The request has been rejected.")
         
-        return redirect(reverse("dashboard"))
+        return redirect(reverse("manage_lesson_requests"))
 
     def book_later(self):
         #This needs to redirect to lesson requests view 
         messages.info(self.request, "The request has been marked for booking later.")
-        return redirect(reverse("dashboard"))
+        return redirect(reverse("manage_lesson_requests"))
 
     
 """LESSON BOOKING VIEWS END"""
@@ -919,11 +1050,11 @@ def CancellationRequestView(request):
     if request.method == 'POST':
         form = CancellationRequestForm(request.POST, user=request.user)  # Pass the user to the form
         if form.is_valid():
-            # Save the form but don't commit to the database yet
+
             cancellation_request = form.save(commit=False)
             # Assign the logged-in user to the `user` field
             cancellation_request.user = request.user
-            # Save the instance to the database
+            
             cancellation_request.save()
             messages.success(request, "Your cancellation request has been submitted.")
             return redirect('dashboard')  # Redirect to the dashboard or another page
@@ -934,20 +1065,28 @@ def CancellationRequestView(request):
 @login_required
 def manage_cancellation_requests(request):
     """Admin view to display and manage all cancellation requests."""
+    try:
+        admin = Admin.objects.get(user=request.user)
+    except Admin.DoesNotExist:
+        messages.error(request, "You must be an admin to access this page.")
+        return redirect('dashboard')
+
+    # Base queryset
+    cancellation_requests = CancellationRequest.objects.select_related(
+        'lesson', 'lesson__student__user', 'lesson__tutor__user'
+    ).all()
+
     # Sorting logic
     sort_by = request.GET.get('sort', 'request_date')
     allowed_sort_fields = {
         'request_date': 'request_date',
         'request_date_desc': '-request_date',
-        'status': 'status',
-        'late_status': '-is_late',
-        'late_status_asc': 'is_late',
     }
 
     if sort_by in allowed_sort_fields:
-        cancellation_requests = CancellationRequest.objects.all().order_by(allowed_sort_fields[sort_by])
+        cancellation_requests = cancellation_requests.order_by(allowed_sort_fields[sort_by])
     else:
-        cancellation_requests = CancellationRequest.objects.all().order_by('-id')
+        cancellation_requests = cancellation_requests.order_by('-id')
 
     # Handle POST requests for accept/reject actions
     if request.method == 'POST':
@@ -961,20 +1100,12 @@ def manage_cancellation_requests(request):
         cancellation_request = get_object_or_404(CancellationRequest, id=request_id)
 
         if action == 'accept':
-                
             lesson = Lesson.objects.select_related('session').get(id=cancellation_request.lesson.id)
-            session = lesson.session
-
-            session.is_booked = False
-            session.save()
-
-            cancellation_request.lesson.status = "cancelled"
-            
+            lesson.rollover = False
             cancellation_request.status = 'approved'
             cancellation_request.save()
 
-            messages.success(request, "Cancellation request approved. The session is now available.")
-
+            messages.success(request, "Cancellation request approved. This session will not be rolled over to next semester.")
         elif action == 'reject':
             cancellation_request.status = 'rejected'
             cancellation_request.save()
@@ -987,8 +1118,9 @@ def manage_cancellation_requests(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
+    # Context data for filters and sorting
     return render(request, 'manage_cancellation_requests.html', {
         'page_obj': page_obj,
         'cancellation_requests': page_obj.object_list,
+        'sort_by': sort_by,
     })
-    

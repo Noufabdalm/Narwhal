@@ -140,15 +140,16 @@ class Command(BaseCommand):
     def create_courses(self):
         print("Seeding courses...")
         expertise_list = Expertise.objects.all()
-        for expertise in expertise_list:
-            for level, price in LEVELS.items():
-                Course.objects.create(
-                    name=f"{expertise.name.capitalize()} {level.capitalize()} Course",
-                    description=f"This is a {level} course for {expertise.name.capitalize()}",
-                    level=level,
-                    price_per_hour=price,
-                    ProgrammingLanguage=expertise
-                )
+        if Course.objects.count()< self.MAX_COURSES:
+            for expertise in expertise_list:
+                for level, price in LEVELS.items():
+                    Course.objects.create(
+                        name=f"{expertise.name.capitalize()} {level.capitalize()} Course",
+                        description=f"This is a {level} course for {expertise.name.capitalize()}",
+                        level=level,
+                        price_per_hour=price,
+                        ProgrammingLanguage=expertise
+                    )
         print("Courses seeding complete.")
 
     def create_terms(self):
