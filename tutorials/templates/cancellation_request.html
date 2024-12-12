@@ -1,7 +1,7 @@
 {% extends 'base_content.html' %}
 {% block content %}
 <h1>Request Lesson Cancellation</h1>
-<form method="post" action="{% url 'request_cancellation' %}">
+<form method="post" action="{% url 'cancellation_request' %}">
   {% csrf_token %}
   <div class="form-group">
       {{ form.lesson.label_tag }}

@@ -41,14 +41,15 @@ class Command(BaseCommand):
         self.faker = Faker('en_GB')
 
     def handle(self, *args, **options):
+        self.create_expertise()
+        self.create_terms()
+        self.create_courses()
         self.create_users()
         self.users = User.objects.all()
         self.assign_roles_to_fixtures()
-        self.create_expertise()
         self.create_tutors()
         self.create_students()
-        self.create_courses()
-        self.create_terms()
+        self.create_admins()
         self.create_sessions()
         self.create_lesson_requests()
         self.create_lessons()
@@ -105,7 +106,7 @@ class Command(BaseCommand):
 
     def create_tutors(self):
         print("Seeding tutors...")
-        expertise_list = list(Expertise.objects.all())  # Retrieve all expertise from the database
+        expertise_list = list(Expertise.objects.all()) 
         tutors_created = Tutor.objects.count()
         while tutors_created < self.TUTOR_COUNT:
             user = self.get_unassigned_user()
@@ -232,7 +233,7 @@ class Command(BaseCommand):
                     frequency=choice(['weekly', 'fortnightly']),
                     duration_minutes=choice([60, 120]),
                     term=choice(terms),
-                    status='pending'  # Initially all requests are pending
+                    status='pending' 
                 )
         print("Lesson requests seeding complete.")
 
@@ -240,16 +241,16 @@ class Command(BaseCommand):
         print("Seeding lessons...")
         lesson_requests = LessonRequest.objects.all()
         for request in lesson_requests:
-            if randint(0, 1):  # Randomly allocate some requests
+            if randint(0, 1): 
                 session = TutorSession.objects.filter(
                     tutor__expertise=request.course.ProgrammingLanguage,
                     term=request.term,
-                    is_booked=False,  # Ensure session is not already booked
-                    start_day=request.term.start_date.weekday()  # Match weekday to term
+                    is_booked=False,  
+                    start_day=request.term.start_date.weekday() 
                 ).first()
 
                 if session:
-                    # Create lesson and mark session as booked
+                    
                     lesson, created = Lesson.objects.get_or_create(
                         student=request.student,
                         tutor=session.tutor,
@@ -300,20 +301,66 @@ class Command(BaseCommand):
         print("Cancellation requests seeding complete.")
 
     def assign_roles_to_fixtures(self):
-        """Assign specific roles to user fixtures."""
+        """Assign specific roles to user fixtures and establish relationships."""
         for fixture in user_fixtures:
             user = User.objects.filter(username=fixture['username']).first()
             if user:
+                # Assign roles based on username
                 if fixture['username'] == '@johndoe':
                     if not Admin.objects.filter(user=user).exists():
                         Admin.objects.create(user=user)
+                    print(f"Assigned admin role to John doe")
+                
                 elif fixture['username'] == '@janedoe':
                     if not Tutor.objects.filter(user=user).exists():
+                        expertise_list = list(Expertise.objects.all()) 
                         tutor = Tutor.objects.create(user=user)
-                        tutor.expertise.add(*list(Expertise.objects.all()[:5])) 
+                        # Assign expertise 
+                        random_skills = self.random_expertise(expertise_list)
+                        tutor.expertise.add(*random_skills)
+                    print("Assigned tutor role to jane doe with expertise")
+                
                 elif fixture['username'] == '@charlie':
                     if not Student.objects.filter(user=user).exists():
-                        Student.objects.create(user=user, learning_level='beginner')
+                        student = Student.objects.create(user=user, learning_level='beginner')
+                        print("Assigned student role to Charlie Johnson")
+
+                       
+                        tutor = Tutor.objects.filter(user__username='@janedoe').first()
+                        if tutor:
+                             # Establish relationship between @charlie and @janedoe# Create a lesson request for @charlie with @janedoe
+                            course = Course.objects.filter(ProgrammingLanguage__in=tutor.expertise.all()).first()
+                            if course:
+                                term = Term.objects.first()  # Use the first term
+                                lesson_request = LessonRequest.objects.create(
+                                    student=student,
+                                    course=course,
+                                    frequency='weekly',
+                                    duration_minutes=60,
+                                    term=term,
+                                    status='pending'
+                                )
+                                session = TutorSession.objects.filter(
+                                    tutor=tutor,
+                                    term=term,
+                                    is_booked=False
+                                ).first()
+                                if session:
+                                    Lesson.objects.create(
+                                        student=student,
+                                        tutor=tutor,
+                                        course=course,
+                                        session=session,
+                                        term=term,
+                                        request=lesson_request,
+                                        rollover=True
+                                    )
+                                    session.is_booked = True
+                                    session.save()
+                                    lesson_request.status = 'allocated'
+                                    lesson_request.save()
+                                    print(f"Created lesson for {student.user.username} with tutor {tutor.user.username}")
+
 
     def random_expertise(self, expertise_list):
         NumberOfSkills = randint(1, 10)
@@ -323,6 +370,7 @@ class Command(BaseCommand):
         user = User.objects.filter(
             student_profile=None,
             tutor_profile=None,
+            admin_profile = None
         ).first()
         return user
 
