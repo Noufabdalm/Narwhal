@@ -177,7 +177,7 @@ def tutor_dashboard(request):
     }
     return render(request, 'tutor_dashboard.html', context)
 
-@staff_member_required
+@login_required
 def admin_invoice_view(request):
     """
     View for admin to view and filter invoices by status and student.

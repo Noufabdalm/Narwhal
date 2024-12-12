@@ -62,7 +62,7 @@ Admin Dashboard
             <div class="p-4 bg-light border rounded">
                 <h5 class="fw-bold text-dark">Invoices</h5>
                 <p><strong>{{ unpaid_invoices }}</strong> invoices </p>
-                <a href="#" class="btn btn-outline-secondary btn-sm">View Invoices</a>
+                <a href="{% url 'admin_invoice_view' %}" class="btn btn-outline-secondary btn-sm">View Invoices</a>
             </div>
         </div>
     </div>

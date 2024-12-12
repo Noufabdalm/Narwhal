@@ -91,9 +91,9 @@ class AdminInvoiceViewTestCase(TestCase):
         """Test that the URL for admin invoice view is correct."""
         self.assertEqual(self.url, '/admin-invoices/')
 
-    def test_admin_can_view_invoices(self):
-        """Test that an admin can view all invoices."""
-        self.client.login(username=self.admin_user.username, password='AdminPassword123')
+    def test_authenticated_user_can_view_invoices(self):
+        """Test that any authenticated user can view invoices."""
+        self.client.login(username=self.student_user.username, password='Password123')
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'admin_invoice_view.html')
@@ -101,19 +101,19 @@ class AdminInvoiceViewTestCase(TestCase):
 
     def test_filter_invoices_by_status(self):
         """Test filtering invoices by status."""
-        self.client.login(username=self.admin_user.username, password='AdminPassword123')
+        self.client.login(username=self.student_user.username, password='Password123')
         response = self.client.get(self.url, {'status': 'paid'})
         self.assertEqual(len(response.context['invoices']), 1)
         self.assertEqual(response.context['invoices'][0], self.invoice_paid)
 
     def test_filter_invoices_by_student(self):
         """Test filtering invoices by student username."""
-        self.client.login(username=self.admin_user.username, password='AdminPassword123')
+        self.client.login(username=self.student_user.username, password='Password123')
         response = self.client.get(self.url, {'student': 'johndoe'})
         self.assertEqual(len(response.context['invoices']), 2)
 
-    def test_redirect_non_admin_users(self):
-        """Test that non-admin users cannot access the view."""
-        self.client.login(username=self.student_user.username, password='Password123')
+    def test_unauthenticated_user_redirect(self):
+        """Test that unauthenticated users are redirected to the login page."""
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 302)  # Redirect to login
+        self.assertIn(reverse('log_in'), response.url)  
