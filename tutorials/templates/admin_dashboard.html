@@ -8,26 +8,52 @@ Admin Dashboard
 <div class="container mt-4">
     <h1 class="text-center mb-4">Admin Dashboard</h1>
 
-    <!-- Lesson Management Section -->
-    <h6 class="text-muted mb-2">Lesson Management</h6>
-    <div class="row g-3">
-        <!-- Total Lessons -->
-        <div class="col-md-6">
-            <div class="p-4 bg-light border rounded">
-                <h5 class="fw-bold text-dark">Total Lessons</h5>
-                <p><strong>{{ total_lessons }}</strong> lessons scheduled.</p>
-                <a href="allocated_lessons" class="btn btn-outline-secondary btn-sm">View Lessons</a>
-            </div>
-        </div>
-        <!-- Pending Requests -->
-        <div class="col-md-6">
-            <div class="p-4 bg-light border rounded">
-                <h5 class="fw-bold text-dark">Pending Requests</h5>
-                <p><strong>{{ pending_requests }}</strong> requests </p>
-                <a href="{% url 'manage_lesson_requests' %}" class="btn btn-outline-secondary btn-sm">Manage Requests</a>
-            </div>
+<!-- Lesson Management Section -->
+<h6 class="text-muted mb-4">Lesson Management</h6>
+<div class="row row-cols-1 row-cols-md-2 g-4">
+    <!-- Total Lessons -->
+    <div class="col">
+        <div class="p-4 bg-light border rounded">
+            <h5 class="fw-bold text-dark mb-3">Total Lessons</h5>
+            <p><strong>{{ total_lessons }}</strong> lessons scheduled.</p>
+            <a href="{% url 'allocated_lessons' %}" class="btn btn-outline-secondary btn-sm w-100 mt-2">View Lessons</a>
         </div>
     </div>
+
+    <!-- Pending Requests -->
+    <div class="col">
+        <div class="p-4 bg-light border rounded">
+            <h5 class="fw-bold text-dark mb-3">Pending Requests</h5>
+            <p><strong>{{ pending_requests }}</strong> requests pending action.</p>
+            <a href="{% url 'manage_lesson_requests' %}" class="btn btn-outline-secondary btn-sm w-100 mt-2">Manage Requests</a>
+        </div>
+    </div>
+</div>
+
+<!-- Cancellation Requests -->
+<div class="row g-4 mt-4">
+    <div class="col">
+        <div class="p-4 bg-light border rounded">
+            <h5 class="fw-bold text-dark mb-3">Cancellation Requests</h5>
+            <p>Manage and cancel sessions for both tutors and students.</p>
+            <a href="{% url 'manage_cancellation_requests' %}" class="btn btn-outline-secondary btn-sm w-100 mt-2">View Requests</a>
+        </div>
+    </div>
+</div>
+
+<!-- Tutor Sessions -->
+<div class="row g-4 mt-4">
+    <div class="col">
+        <div class="p-4 bg-light border rounded">
+            <h5 class="fw-bold text-dark mb-3">Tutor Sessions</h5>
+            <p>View and manage tutor sessions.</p>
+            <a href="{% url 'admin_tutor_sessions' %}" class="btn btn-outline-secondary btn-sm w-100 mt-2">View Sessions</a>
+        </div>
+    </div>
+</div>
+
+
+       
 
     <!-- Invoices Section -->
     <h6 class="text-muted mt-4 mb-2">Invoices</h6>
