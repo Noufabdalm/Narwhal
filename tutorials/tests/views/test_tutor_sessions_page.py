@@ -1,7 +1,18 @@
 from django.test import TestCase, Client
-from django.contrib.auth.models import User
+from django.conf import settings
+from django.contrib.auth import get_user_model
 from tutorials.models import Tutor, TutorSession, Term
-from datetime import date, time
+from datetime import date, time, timedelta
+import datetime
+
+User = get_user_model()  # Get the custom user model dynamically
+start_times = [
+        time(8,0),time(9, 0),time(10,00),time(11, 00),time(12,00), time(13, 0),time(14,00), time(15,00),time(16, 00),
+        time(17,00),time(18,00),time(19,00),time(20,00), time(21,00), time(22,00)
+        ]
+
+        # List of days of the week (0 = Monday, ..., 6 = Sunday)
+days_of_week = [0, 1, 2, 3, 4]
 
 class TutorSessionsPageTest(TestCase):
     def setUp(self):
@@ -9,9 +20,10 @@ class TutorSessionsPageTest(TestCase):
         self.user = User.objects.create_user(username='test_tutor', password='testpassword')
         self.tutor = Tutor.objects.create(user=self.user)
 
+
         # Create a term
         self.term = Term.objects.create(
-            name="Test Term",
+            name="spring",
             start_date=date(2024, 1, 1),
             end_date=date(2024, 6, 1)
         )
@@ -19,7 +31,7 @@ class TutorSessionsPageTest(TestCase):
         # Create some tutor sessions
         self.session1 = TutorSession.objects.create(
             tutor=self.tutor,
-            time=time(10, 0),
+            time=time(0, 0),
             term=self.term,
             start_day=0,  # Monday
             duration_minutes=60,
@@ -28,7 +40,7 @@ class TutorSessionsPageTest(TestCase):
         )
         self.session2 = TutorSession.objects.create(
             tutor=self.tutor,
-            time=time(14, 0),
+            time=time(4, 0),
             term=self.term,
             start_day=2,  # Wednesday
             duration_minutes=120,
@@ -70,14 +82,18 @@ class TutorSessionsPageTest(TestCase):
     def test_tutor_sessions_pagination(self):
         # Create additional sessions to test pagination
         for i in range(15):
+            session_time = start_times[i % len(start_times)]
+            session_day = days_of_week[i % len(days_of_week)]
+
+            # Create the session
             TutorSession.objects.create(
                 tutor=self.tutor,
-                time=time(9, 0),
+                time=session_time,
                 term=self.term,
-                start_day=i % 5,  # Distribute across weekdays
+                start_day=session_day,  # Assign calculated day
                 duration_minutes=60,
                 frequency='weekly',
-                is_booked=False
+                is_booked=(i % 2 == 0)  # Alternate booked status
             )
 
         # Login as tutor

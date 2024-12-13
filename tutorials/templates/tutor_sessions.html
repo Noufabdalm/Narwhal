@@ -1,10 +1,12 @@
 {% extends "base_content.html" %}
 {% block content %}
 <div class="container mt-5">
-  <h2 class="mb-4 d-flex justify-content-between align-items-center">
-    My Sessions
-    <a href="{% url 'tutor_session_add' %}" class="btn btn-primary">Add New Session</a>
-  </h2>
+  <!-- Header with "Back to Dashboard" button -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>My Sessions</h2>
+    <a href="{% url 'tutor_dashboard' %}" class="btn btn-primary mt-4">Back to Dashboard</a>
+
+  </div>
 
   {% if sessions %}
   <table class="table table-striped table-bordered">
@@ -28,8 +30,8 @@
         <td>{{ session.get_frequency_display }}</td>
         <td>
           <span class="badge fw-bold 
-          {% if session.is_booked %}text-white bg-danger
-          {% else %}text-white bg-success
+          {% if session.is_booked %}bg-success text-white
+          {% else %}bg-warning text-white
           {% endif %}">
           {% if session.is_booked %}Booked{% else %}Available{% endif %}
           </span>
@@ -76,7 +78,5 @@
     You do not have any sessions now.
   </div>
   {% endif %}
-
-  <a href="{% url 'tutor_dashboard' %}" class="btn btn-secondary mt-4">Back to Dashboard</a>
 </div>
 {% endblock %}

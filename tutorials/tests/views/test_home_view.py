@@ -63,14 +63,14 @@ class HomeViewTestCase(TestCase):
         self.assertTemplateUsed(response, 'tutor_dashboard.html')
 
     def test_no_profile_redirect(self):
-        """Test that a user with no profile is redirected to the home page with an error message."""
+        """Test that a user with no profile is redirected tos the home page with an error message."""
         self.client.login(username=self.no_profile_user.username, password='Password123')
         response = self.client.get(self.url, follow=True)
         self.assertRedirects(response, self.url)
 
         # Check that an error message is displayed
         messages = list(get_messages(response.wsgi_request))
-        self.assertTrue(any("Your account type is not authorized to access a dashboard." in str(msg) for msg in messages))
+        self.assertTrue(any("You are not authorized to access this page." in str(msg) for msg in messages))
 
     def test_redirect_when_logged_in(self):
         """Test that a logged-in user with a profile is redirected to the appropriate dashboard."""

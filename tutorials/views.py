@@ -1081,16 +1081,21 @@ def CancellationRequestView(request):
     if request.method == 'POST':
         form = CancellationRequestForm(request.POST, user=request.user)  # Pass the user to the form
         if form.is_valid():
-
             cancellation_request = form.save(commit=False)
             # Assign the logged-in user to the `user` field
             cancellation_request.user = request.user
             
             cancellation_request.save()
             messages.success(request, "Your cancellation request has been submitted.")
-            return redirect('student_dashboard')  # Redirect to the dashboard or another page
+            
+            # Redirect based on the user's profile type
+            if hasattr(request.user, 'student_profile'):
+                return redirect('student_dashboard')
+            elif hasattr(request.user, 'tutor_profile'):
+                return redirect('tutor_dashboard')
     else:
         form = CancellationRequestForm(user=request.user)  # Pass the user to the form
+    
     return render(request, 'cancellation_request.html', {'form': form})
 
 @login_required
@@ -1164,7 +1169,7 @@ def tutor_sessions_page(request):
         tutor = request.user.tutor_profile 
     except AttributeError:
         messages.error(request, 'Only tutors can access this page.')
-        return redirect('dashboard')
+        return redirect('home')
 
     sessions = TutorSession.objects.filter(tutor=tutor).order_by('start_date', 'time')
     paginator = Paginator(sessions, 10)  
