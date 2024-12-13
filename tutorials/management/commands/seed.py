@@ -182,7 +182,7 @@ class Command(BaseCommand):
         ]
 
         for tutor in tutors:
-            if not TutorSession.objects.filter(tutor=tutor).exists():
+            if TutorSession.objects.filter(tutor=tutor).count()<self.MAX_SESSIONS_PER_TUTOR:
                 for term in terms:
                     session_count = randint(1, self.MAX_SESSIONS_PER_TUTOR)
                     created_sessions = 0
@@ -218,7 +218,7 @@ class Command(BaseCommand):
         terms = Term.objects.all()
         if LessonRequest.objects.count()< self.MAX_LESSON_REQUESTS:
             for student in students:
-                if not LessonRequest.objects.filter(student=student).exists():
+                if LessonRequest.objects.filter(student=student).exists()<self.MAX_REQUESTS_PER_STUDENT:
                     request_count = randint(1, self.MAX_REQUESTS_PER_STUDENT)
                     for _ in range(request_count):
                         requests=LessonRequest.objects.filter(
@@ -320,6 +320,7 @@ class Command(BaseCommand):
                         # Assign expertise 
                         random_skills = self.random_expertise(expertise_list)
                         tutor.expertise.add(*random_skills)
+
                     print("Assigned tutor role to jane doe with expertise")
                 
                 elif fixture['username'] == '@charlie':
@@ -333,7 +334,7 @@ class Command(BaseCommand):
                              # Establish relationship between @charlie and @janedoe# Create a lesson request for @charlie with @janedoe
                             course = Course.objects.filter(ProgrammingLanguage__in=tutor.expertise.all()).first()
                             if course:
-                                term = Term.objects.first()  # Use the first term
+                                term = Term.objects.first()  
                                 lesson_request = LessonRequest.objects.create(
                                     student=student,
                                     course=course,

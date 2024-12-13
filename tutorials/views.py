@@ -63,7 +63,7 @@ def student_courses_view(request):
         student = request.user.student_profile
     except AttributeError:
         messages.error(request, "You are not authorized to view this page.")
-        return redirect('dashboard')
+        return redirect('log_in')
 
     lessons = Lesson.objects.filter(student=student)
 
@@ -88,7 +88,7 @@ def student_lesson_schedule_view(request):
         student = request.user.student_profile
     except AttributeError:
         messages.error(request, "You are not authorized to view this page.")
-        return redirect('dashboard')
+        return redirect('log_in')
 
     lessons = Lesson.objects.filter(student=student).order_by('session__time', 'session__start_date')
 
@@ -116,7 +116,7 @@ def tutor_schedule_view(request):
         tutor = request.user.tutor_profile
     except AttributeError:
         messages.error(request, "You are not authorized to view this page.")
-        return redirect('dashboard')
+        return redirect('log_in')
 
     lessons = Lesson.objects.filter(tutor=tutor).order_by('session__start_date', 'session__time')
 
@@ -209,29 +209,28 @@ def home(request):
 
 class LoginProhibitedMixin:
     """Mixin that redirects when a user is logged in."""
-
     redirect_when_logged_in_url = None
 
     def dispatch(self, *args, **kwargs):
         """Redirect when logged in, or dispatch as normal otherwise."""
         if self.request.user.is_authenticated:
-            return self.handle_already_logged_in(*args, **kwargs)
+            redirect_url = self.get_redirect_when_logged_in_url()
+            # Avoid redirecting to the same path
+            if self.request.path != redirect_url:
+                return redirect(redirect_url)
         return super().dispatch(*args, **kwargs)
 
-    def handle_already_logged_in(self, *args, **kwargs):
-        url = self.get_redirect_when_logged_in_url()
-        return redirect(url)
-
     def get_redirect_when_logged_in_url(self):
-        """Returns the url to redirect to when not logged in."""
+        """Returns the URL to redirect to when logged in."""
         if self.redirect_when_logged_in_url is None:
             raise ImproperlyConfigured(
                 "LoginProhibitedMixin requires either a value for "
                 "'redirect_when_logged_in_url', or an implementation for "
                 "'get_redirect_when_logged_in_url()'."
             )
-        else:
-            return self.redirect_when_logged_in_url
+        return self.redirect_when_logged_in_url
+
+
         
 
 class AdminRequiredMixin:
@@ -240,7 +239,7 @@ class AdminRequiredMixin:
             Admin.objects.get(user=request.user)
         except Admin.DoesNotExist:
             messages.error(request, "You must be an admin to access this page.")
-            return redirect('home')  # Redirect to a suitable page
+            return redirect('log_in')  # Redirect to a suitable page
         return super().dispatch(request, *args, **kwargs)
 
 
@@ -328,11 +327,10 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
 
 
 class SignUpView(LoginProhibitedMixin, FormView):
-    """Display the sign up screen and handle sign ups."""
-
+    """Display the sign-up screen and handle sign-ups."""
     form_class = SignUpForm
     template_name = "sign_up.html"
-    redirect_when_logged_in_url = settings.REDIRECT_URL_WHEN_LOGGED_IN
+    redirect_when_logged_in_url = 'student_dashboard'  # Redirect students
 
     def form_valid(self, form):
         self.object = form.save()
@@ -340,22 +338,29 @@ class SignUpView(LoginProhibitedMixin, FormView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
+        return reverse('student_dashboard')
+
     
 class TutorSignUpView(LoginProhibitedMixin, FormView):
-    """Display the sign up screen and handle tutor sign ups."""
-
+    """Display the sign-up screen and handle tutor sign-ups."""
     form_class = TutorSignUpForm
     template_name = "tutor_sign_up.html"
-    redirect_when_logged_in_url = settings.REDIRECT_URL_WHEN_LOGGED_IN
+    redirect_when_logged_in_url = 'tutor_dashboard'  # Redirect tutors
 
     def form_valid(self, form):
-        self.object = form.save()
-        login(self.request, self.object)
-        return super().form_valid(form)
+        try:
+            self.object = form.save()
+            login(self.request, self.object)
+            return super().form_valid(form)
+        except Exception as e:
+            print("Error during form submission:", e)  # For debugging
+            form.add_error(None, "An unexpected error occurred.")
+            return self.form_invalid(form)
+
 
     def get_success_url(self):
-        return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
+        return reverse('tutor_dashboard')
+
 
 
 class LessonRequestView(LoginRequiredMixin, FormView): 
@@ -418,7 +423,7 @@ def allocated_lessons_view(request):
         admin = Admin.objects.get(user=request.user)
     except Admin.DoesNotExist:
         messages.error(request, "You must be an admin to access this page.")
-        return redirect('home')
+        return redirect('log_in')
     
     # Get filter values from GET parameters
     term_filter = request.GET.get('term')
@@ -1082,7 +1087,7 @@ def manage_cancellation_requests(request):
         admin = Admin.objects.get(user=request.user)
     except Admin.DoesNotExist:
         messages.error(request, "You must be an admin to access this page.")
-        return redirect('home')
+        return redirect('log_in')
 
     # Base queryset
     cancellation_requests = CancellationRequest.objects.select_related(

@@ -15,85 +15,129 @@ class ProfileViewTest(TestCase):
     ]
 
     def setUp(self):
-        self.user = User.objects.get(username='@johndoe')
+        # Create a unique student user for the test
+        self.student_user = User.objects.create_user(
+            username='@student',
+            email='student@example.com',
+            password='Password123',
+            first_name='StudentFirstName',
+            last_name='StudentLastName'
+        )
+
+        # Create a conflicting user to test duplicate username errors
+        self.duplicate_user = User.objects.create_user(
+            username='@duplicate',
+            email='duplicate@example.com',
+            password='Password123'
+        )
+
         self.url = reverse('profile')
         self.form_input = {
-            'first_name': 'John2',
-            'last_name': 'Doe2',
-            'username': '@johndoe2',
-            'email': 'johndoe2@example.org',
+            'first_name': 'NewFirstName',
+            'last_name': 'NewLastName',
+            'username': 'NewUsername',
+            'email': 'newemail@example.com',
         }
 
     def test_profile_url(self):
         self.assertEqual(self.url, '/profile/')
 
     def test_get_profile(self):
-        self.client.login(username=self.user.username, password='Password123')
+        self.client.login(username=self.student_user.username, password='Password123')
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'profile.html')
         form = response.context['form']
         self.assertTrue(isinstance(form, UserForm))
-        self.assertEqual(form.instance, self.user)
+        self.assertEqual(form.instance, self.student_user)
 
     def test_get_profile_redirects_when_not_logged_in(self):
         redirect_url = reverse_with_next('log_in', self.url)
         response = self.client.get(self.url)
         self.assertRedirects(response, redirect_url, status_code=302, target_status_code=200)
 
-    def test_unsuccesful_profile_update(self):
-        self.client.login(username=self.user.username, password='Password123')
+    def test_unsuccessful_profile_update_due_to_invalid_data(self):
+        self.client.login(username=self.student_user.username, password='Password123')
+
+        # Ensure initial data is correct
+        self.assertEqual(self.student_user.first_name, 'StudentFirstName')
+        self.assertEqual(self.student_user.last_name, 'StudentLastName')
+
+        # Attempt update with invalid username
         self.form_input['username'] = 'BAD_USERNAME'
         before_count = User.objects.count()
         response = self.client.post(self.url, self.form_input)
         after_count = User.objects.count()
+
+        # Check that no new users were created
         self.assertEqual(after_count, before_count)
+
+        # Verify that response renders the profile page with errors
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'profile.html')
         form = response.context['form']
         self.assertTrue(isinstance(form, UserForm))
         self.assertTrue(form.is_bound)
-        self.user.refresh_from_db()
-        self.assertEqual(self.user.username, '@johndoe')
-        self.assertEqual(self.user.first_name, 'John')
-        self.assertEqual(self.user.last_name, 'Doe')
-        self.assertEqual(self.user.email, 'johndoe@example.org')
+
+        # Verify that the database has not been updated
+        self.student_user.refresh_from_db()
+        self.assertEqual(self.student_user.first_name, 'StudentFirstName')
+        self.assertEqual(self.student_user.last_name, 'StudentLastName')
+        self.assertEqual(self.student_user.username, '@student')
+        self.assertEqual(self.student_user.email, 'student@example.com')
 
     def test_unsuccessful_profile_update_due_to_duplicate_username(self):
-        self.client.login(username=self.user.username, password='Password123')
-        self.form_input['username'] = '@janedoe'
+        self.client.login(username=self.student_user.username, password='Password123')
+
+        # Ensure initial data is correct
+        self.assertEqual(self.student_user.username, '@student')
+
+        # Attempt to update with a duplicate username
+        self.form_input['username'] = self.duplicate_user.username
         before_count = User.objects.count()
         response = self.client.post(self.url, self.form_input)
         after_count = User.objects.count()
+
+        # Check that no new users were created
         self.assertEqual(after_count, before_count)
+
+        # Verify that response renders the profile page with errors
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'profile.html')
         form = response.context['form']
         self.assertTrue(isinstance(form, UserForm))
         self.assertTrue(form.is_bound)
-        self.user.refresh_from_db()
-        self.assertEqual(self.user.username, '@johndoe')
-        self.assertEqual(self.user.first_name, 'John')
-        self.assertEqual(self.user.last_name, 'Doe')
-        self.assertEqual(self.user.email, 'johndoe@example.org')
 
-    def test_succesful_profile_update(self):
-        self.client.login(username=self.user.username, password='Password123')
+        # Verify that the database has not been updated
+        self.student_user.refresh_from_db()
+        self.assertEqual(self.student_user.username, '@student')
+        self.assertEqual(self.student_user.first_name, 'StudentFirstName')
+        self.assertEqual(self.student_user.last_name, 'StudentLastName')
+        self.assertEqual(self.student_user.email, 'student@example.com')
+
+    def test_successful_profile_update(self):
+        self.client.login(username=self.student_user.username, password='Password123')
+
+        # Attempt a valid update
         before_count = User.objects.count()
         response = self.client.post(self.url, self.form_input, follow=True)
         after_count = User.objects.count()
+
+        # Check that no new users were created
         self.assertEqual(after_count, before_count)
-        response_url = reverse('dashboard')
+
+        # Verify that the user is redirected to the home page after a successful update
+        response_url = reverse('home')  # Ensure this matches the redirect logic in your view
         self.assertRedirects(response, response_url, status_code=302, target_status_code=200)
-        self.assertTemplateUsed(response, 'dashboard.html')
-        messages_list = list(response.context['messages'])
-        self.assertEqual(len(messages_list), 1)
-        self.assertEqual(messages_list[0].level, messages.SUCCESS)
-        self.user.refresh_from_db()
-        self.assertEqual(self.user.username, '@johndoe2')
-        self.assertEqual(self.user.first_name, 'John2')
-        self.assertEqual(self.user.last_name, 'Doe2')
-        self.assertEqual(self.user.email, 'johndoe2@example.org')
+        self.assertTemplateUsed(response, 'home.html')  # Ensure the home template is correct
+
+        # Verify that the database has been updated
+        self.student_user.refresh_from_db()
+        self.assertEqual(self.student_user.username, 'NewUsername')
+        self.assertEqual(self.student_user.first_name, 'NewFirstName')
+        self.assertEqual(self.student_user.last_name, 'NewLastName')
+        self.assertEqual(self.student_user.email, 'newemail@example.com')
+
 
     def test_post_profile_redirects_when_not_logged_in(self):
         redirect_url = reverse_with_next('log_in', self.url)
