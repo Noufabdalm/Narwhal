@@ -283,9 +283,11 @@ class TutorSession(models.Model):
             tutor=self.tutor,
             term=self.term,
             start_day=self.start_day,
+            frequency = self.frequency
         ).exclude(pk=self.pk).filter(
             time__lt=end_time,  
-            time__gte=self.time  
+            time__gte=self.time,
+            frequency=self.frequency
         )
 
         if overlapping_sessions.exists():

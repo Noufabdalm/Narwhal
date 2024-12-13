@@ -5,6 +5,7 @@ import datetime
 from decimal import Decimal
 from faker import Faker
 from random import randint, choice, sample
+from django.core.exceptions import ValidationError
 
 #Comment to push 
 user_fixtures = [
@@ -33,6 +34,7 @@ class Command(BaseCommand):
     MAX_COURSES = len(expertises)*len(LEVELS)
     MAX_REQUESTS_PER_STUDENT = 15
     MAX_SESSIONS_PER_TUTOR = 20
+    MAX_LESSON_REQUESTS = 100
     DEFAULT_PASSWORD = 'Password123'
     help = 'Seeds the database with sample data'
    
@@ -171,70 +173,70 @@ class Command(BaseCommand):
 
     def create_sessions(self):
         print("Seeding tutor sessions...")
-        terms = Term.objects.all() 
-        tutors = Tutor.objects.all()  
+        terms = Term.objects.all()
+        tutors = Tutor.objects.all()
         time_choices = [
-            (datetime.time(hour, minute))
-            for hour in range(9, 18) 
-            for minute in (0, 30) 
+            datetime.time(hour, minute)
+            for hour in range(9, 18)  # 9 AM to 6 PM
+            for minute in (0, 30)  # Half-hour intervals
         ]
 
         for tutor in tutors:
-            for term in terms:
-                session_count = randint(1, self.MAX_SESSIONS_PER_TUTOR)  
-                created_sessions = 0  
+            if not TutorSession.objects.filter(tutor=tutor).exists():
+                for term in terms:
+                    session_count = randint(1, self.MAX_SESSIONS_PER_TUTOR)
+                    created_sessions = 0
 
-                while created_sessions < session_count:
-                    start_time = choice(time_choices)
-                    start_day = randint(0, 4) 
-                    duration = choice([60, 120])  
+                    while created_sessions < session_count:
+                        start_time = choice(time_choices)
+                        start_day = randint(0, 4)  # Monday to Friday
+                        duration = choice([60, 120])  # 1 hour or 2 hours
+                        frequency = choice(['weekly', 'fortnightly'])
 
-                    
-                    end_time = (datetime.datetime.combine(datetime.date.today(), start_time) +
-                                timedelta(minutes=duration)).time()
+                        try:
+                            # Create session if no overlaps found
+                            TutorSession.objects.create(
+                                tutor=tutor,
+                                time=start_time,
+                                term=term,
+                                start_day=start_day,
+                                duration_minutes=duration,
+                                frequency=frequency,
+                                is_booked=False
+                            )
+                            created_sessions += 1
+                        except (ValueError, ValidationError):
+                            continue
 
-                    overlapping_sessions = TutorSession.objects.filter(
-                        tutor=tutor,
-                        term=term,
-                        start_day=start_day,
-                    ).filter(
-                        time__lt=end_time,
-                        time__gte=start_time
-                    )
-
-                    if overlapping_sessions.exists():
-                        continue  # Skip creation if there's an overlap
-
-                    
-                    TutorSession.objects.create(
-                        tutor=tutor,
-                        time=start_time,
-                        term=term,
-                        start_day=start_day,
-                        duration_minutes=duration,
-                        frequency=choice(['weekly', 'fortnightly']),
-                        is_booked=False,
-                    )
-                    created_sessions += 1  
         print("Tutor sessions seeding complete.")
 
-    
+
     def create_lesson_requests(self):
         print("Seeding lesson requests...")
         students = Student.objects.all()
         courses = Course.objects.all()
         terms = Term.objects.all()
-        for student in students:
-            request_count = randint(1, self.MAX_REQUESTS_PER_STUDENT)
-            for _ in range(request_count):
-                LessonRequest.objects.get_or_create(
-                    student=student,
-                    course=choice(courses),
-                    frequency=choice(['weekly', 'fortnightly']),
-                    duration_minutes=choice([60, 120]),
-                    term=choice(terms),
-                    status='pending' 
-                )
+        if LessonRequest.objects.count()< self.MAX_LESSON_REQUESTS:
+            for student in students:
+                if not LessonRequest.objects.filter(student=student).exists():
+                    request_count = randint(1, self.MAX_REQUESTS_PER_STUDENT)
+                    for _ in range(request_count):
+                        requests=LessonRequest.objects.filter(
+                            student=student,
+                            course=choice(courses),
+                            frequency=choice(['weekly', 'fortnightly']),
+                            duration_minutes=choice([60, 120]),
+                            term=choice(terms)
+                        )
+                        if not requests.exists():
+                            LessonRequest.objects.create(
+                            student=student,
+                            course=choice(courses),
+                            frequency=choice(['weekly', 'fortnightly']),
+                            duration_minutes=choice([60, 120]),
+                            term=choice(terms),
+                            status = 'pending'
+                            )
         print("Lesson requests seeding complete.")
 
     def create_lessons(self):
@@ -245,8 +247,7 @@ class Command(BaseCommand):
                 session = TutorSession.objects.filter(
                     tutor__expertise=request.course.ProgrammingLanguage,
                     term=request.term,
-                    is_booked=False,  
-                    start_day=request.term.start_date.weekday() 
+                    is_booked=False
                 ).first()
 
                 if session:
@@ -273,15 +274,16 @@ class Command(BaseCommand):
         print("Seeding invoices...")
         lessons = Lesson.objects.all()
         for lesson in lessons:
-            Invoice.objects.get_or_create(
-                lesson=lesson,
-                defaults={
-                    'student': lesson.student,
-                    'total_amount': Decimal(lesson.session.calculate_term_cost(lesson.course)),
-                    'due_date': lesson.session.start_date,
-                    'status': choice(['paid', 'unpaid']),
-                }
-            )
+            if not Invoice.objects.filter(lesson=lesson).exists():
+                Invoice.objects.get_or_create(
+                    lesson=lesson,
+                    defaults={
+                        'student': lesson.student,
+                        'total_amount': Decimal(lesson.session.calculate_term_cost(lesson.course)),
+                        'due_date': lesson.session.start_date,
+                        'status': choice(['paid', 'unpaid']),
+                    }
+                )
         print("Invoices seeding complete.")
 
     def create_cancellation_requests(self):
@@ -362,6 +364,7 @@ class Command(BaseCommand):
                                     print(f"Created lesson for {student.user.username} with tutor {tutor.user.username}")
 
 
+    ## HELPER METHODS TO SEED ##
     def random_expertise(self, expertise_list):
         NumberOfSkills = randint(1, 10)
         return sample(expertise_list, k=NumberOfSkills)  
@@ -373,6 +376,22 @@ class Command(BaseCommand):
             admin_profile = None
         ).first()
         return user
+    
+    def calculate_start_date(self, term, start_day):
+        """Calculate the first occurrence of the desired weekday in the term."""
+        delta_days = (start_day - term.start_date.weekday()) % 7
+        start_date = term.start_date + timedelta(days=delta_days)
+        return start_date
+
+    def calculate_end_date(self, start_date, term, frequency):
+        """Calculate the end date based on the recurrence."""
+        session_interval = 7 if frequency == 'weekly' else 14
+        current_date = start_date
+
+        while current_date + timedelta(days=session_interval) <= term.end_date:
+            current_date += timedelta(days=session_interval)
+
+        return current_date
 
 def create_username(first_name, last_name):
     return '@' + first_name.lower() + last_name.lower()
