@@ -23,6 +23,9 @@ from .forms import CourseForm, ExpertiseForm
 from django.db.models import Prefetch
 from django.core.paginator import Paginator
 
+from django.views.generic.edit import CreateView
+from django.urls import reverse_lazy
+from django.utils.decorators import method_decorator
 
 
 
@@ -263,7 +266,17 @@ class LogInView(LoginProhibitedMixin, View):
         user = form.get_user()
         if user is not None:
             login(request, user)
-            return redirect(self.next)
+
+            # 新增 Tutor 登录后的跳转逻辑
+            if hasattr(user, 'tutor_profile'):
+                return redirect('tutor_dashboard')
+            
+            # 原有 Admin 和 Student 的跳转逻辑保持不变
+            elif hasattr(user, 'admin_profile'):
+                return redirect('admin_dashboard')
+            else:
+                return redirect('dashboard')  # 默认跳转学生的 dashboard
+
         messages.add_message(request, messages.ERROR, "The credentials provided were invalid!")
         return self.render()
 
@@ -1142,4 +1155,23 @@ def manage_cancellation_requests(request):
         'page_obj': page_obj,
         'cancellation_requests': page_obj.object_list,
         'sort_by': sort_by,
+    })
+
+
+def tutor_sessions_page(request):
+    """Tutor can check all the added Tutor Sessions."""
+    try:
+        tutor = request.user.tutor_profile 
+    except AttributeError:
+        messages.error(request, 'Only tutors can access this page.')
+        return redirect('dashboard')
+
+    sessions = TutorSession.objects.filter(tutor=tutor).order_by('start_date', 'time')
+    paginator = Paginator(sessions, 10)  
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'tutor_sessions.html', {
+        'page_obj': page_obj,
+        'sessions': page_obj.object_list,
     })

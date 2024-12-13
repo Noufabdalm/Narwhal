@@ -296,3 +296,4 @@ class CancellationRequestForm(forms.ModelForm):
         if not lesson:
             raise forms.ValidationError("Please select a valid lesson for cancellation.")
         return cleaned_data
+        

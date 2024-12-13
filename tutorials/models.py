@@ -255,7 +255,6 @@ class TutorSession(models.Model):
 
 
     def clean(self):
-        
         if self.pk:  
             original_session = TutorSession.objects.get(pk=self.pk)
             if (
@@ -275,7 +274,9 @@ class TutorSession(models.Model):
         ).exclude(pk=self.pk).exists():
             raise ValidationError("A tutor session with these details already exists.")
 
-        
+        if not self.tutor:
+            raise ValidationError("Tutor field must be set before validation.")
+
         end_time = self.calculate_end_time()
 
         # Check for overlapping sessions on the same day and term
