@@ -25,7 +25,6 @@ from django.core.paginator import Paginator
 
 from django.views.generic.edit import CreateView
 from django.urls import reverse_lazy
-from .forms import TutorSessionForm
 from django.utils.decorators import method_decorator
 
 
@@ -1138,7 +1137,6 @@ def manage_cancellation_requests(request):
         'cancellation_requests': page_obj.object_list,
         'sort_by': sort_by,
     })
-
 
 
 def tutor_sessions_page(request):
