@@ -1,7 +1,12 @@
 {% extends 'base_content.html' %}
 {% block content %}
-<h1>Request Lesson Cancellation</h1>
-<form method="post" action="{% url 'request_cancellation' %}">
+
+<h1 class="d-flex justify-content-between align-items-center">
+  Request Lesson Cancellation
+  <a href="{% url 'dashboard' %}" class="btn btn-primary">Back to Dashboard</a>
+</h1>
+
+<form method="post" action="{% url 'cancellation_request' %}">
   {% csrf_token %}
   <div class="form-group">
       {{ form.lesson.label_tag }}
