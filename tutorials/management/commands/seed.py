@@ -27,13 +27,13 @@ LEVELS = {
         }
 
 class Command(BaseCommand):
-    USER_COUNT = 40
-    ADMIN_COUNT = 10
-    TUTOR_COUNT = 15
-    STUDENT_COUNT = 15
+    USER_COUNT = 300
+    ADMIN_COUNT = 20
+    TUTOR_COUNT = 140
+    STUDENT_COUNT = 140
     MAX_COURSES = len(expertises)*len(LEVELS)
-    MAX_REQUESTS_PER_STUDENT = 15
-    MAX_SESSIONS_PER_TUTOR = 20
+    MAX_REQUESTS_PER_STUDENT = 10
+    MAX_SESSIONS_PER_TUTOR = 15
     MAX_LESSON_REQUESTS = 100
     DEFAULT_PASSWORD = 'Password123'
     help = 'Seeds the database with sample data'

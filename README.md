@@ -12,7 +12,7 @@ The members of the team are:
 The project is called `task_manager`.  It currently consists of a single app `tasks`.
 
 ## Deployed version of the application
-The deployed version of the application can be found at [*enter url here*](*enter_url_here*).
+The deployed version of the application can be found at [https://noufabdalm.pythonanywhere.com/](https://noufabdalm.pythonanywhere.com/).
 
 ## Installation instructions
 To install the software and use it in your local development environment, you must first set up and activate a local development environment.  From the root of the project:
@@ -50,4 +50,5 @@ $ python3 manage.py test
 ## Sources
 The packages used by this application are specified in `requirements.txt`
 
-*Declare are other sources here, and remove this line*
+Generative AI was utilized to support the testing process and assist in designing templates.
+It was also employed for debugging and providing guidance throughout the development process.
