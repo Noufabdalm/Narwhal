@@ -25,7 +25,6 @@ from django.core.paginator import Paginator
 
 from django.views.generic.edit import CreateView
 from django.urls import reverse_lazy
-from .forms import TutorSessionForm
 from django.utils.decorators import method_decorator
 
 
