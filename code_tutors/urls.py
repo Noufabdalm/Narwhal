@@ -29,6 +29,9 @@ urlpatterns = [
     path('password/', views.PasswordView.as_view(), name='password'),
     path('profile/', views.ProfileUpdateView.as_view(), name='profile'),
     path('sign_up/', views.SignUpView.as_view(), name='sign_up'),
+    path('my-courses/', views.student_courses_view, name='student_courses'),
+    path('lesson-schedule/', views.student_lesson_schedule_view, name='student_lesson_schedule'),
+    path('tutor-schedule/', views.tutor_schedule_view, name='tutor_schedule'),
     path('lesson_requests/', views.LessonRequestView.as_view(), name='lesson_requests'),
     path('students/', views.student_list, name='student_list'),
     path('students/<int:student_id>/', views.student_details, name='student_detail'),
@@ -51,9 +54,18 @@ urlpatterns = [
     path('manage-lesson-requests/', views.manage_lesson_requests, name='manage_lesson_requests'),
     path('admin_dashboard/allocated_lessons/', views.allocated_lessons_view, name='allocated_lessons'),
     path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('tutor/sessions/add/', views.TutorSessionCreateView.as_view(), name='tutor_session_add'),
+    path('tutor/dashboard/', views.tutor_dashboard, name='tutor_dashboard'),   
     path('request_cancellation/', views.CancellationRequestView, name='cancellation_request'),
     path('manage_cancellation_requests/', views.manage_cancellation_requests, name='manage_cancellation_requests'),
     path('tutor_sign_up/', views.TutorSignUpView.as_view(), name='tutor_sign_up'),
+    path('my-courses/', views.student_courses_view, name='student_courses'),
+    path('lesson-schedule/', views.student_lesson_schedule_view, name='student_lesson_schedule'),
+    path('payment-history/', views.student_payment_history_view, name='student_payment_history'),
+    path('admin-invoices/', views.admin_invoice_view, name='admin_invoice_view'),
+    path('student_dashboard/', views.student_dashboard, name='student_dashboard'),
+    path('tutor/sessions/', views.tutor_sessions_page, name='tutor_sessions'),
     path('admin_tutor_sessions/', views.tutor_sessions_view, name='admin_tutor_sessions')
 ]
+
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
