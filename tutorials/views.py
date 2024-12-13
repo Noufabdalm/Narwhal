@@ -1150,7 +1150,7 @@ def tutor_sessions_page(request):
         return redirect('dashboard')
 
     sessions = TutorSession.objects.filter(tutor=tutor).order_by('start_date', 'time')
-    paginator = Paginator(sessions, 10)  # 每页显示 10 个会话
+    paginator = Paginator(sessions, 10)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
