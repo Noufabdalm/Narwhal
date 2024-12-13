@@ -45,17 +45,24 @@ Tutor Dashboard
     <h6 class="text-muted mt-4 mb-2">Manage Sessions</h6>
     <div class="row g-3">
         <!-- Manage Sessions -->
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="p-4 bg-light border rounded">
                 <h5 class="fw-bold text-dark">Tutor Sessions</h5>
-                <a href="{% url 'tutor_sessions' %}" class="btn btn-outline-secondary btn-sm">View and Add Availability</a>
+                <a href="{% url 'tutor_schedule' %}" class="btn btn-outline-secondary btn-sm">View and Add Availability</a>
             </div>
         </div>
         <!-- Cancel Session Request -->
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="p-4 bg-light border rounded">
                 <h5 class="fw-bold text-dark">Cancel Lesson Request</h5>
                 <a href="{% url 'cancellation_request' %}" class="btn btn-outline-danger btn-sm">Cancel Lesson Request</a>
+            </div>
+        </div>
+        <!-- Tutor Sessions View -->
+        <div class="col-md-4">
+            <div class="p-4 bg-light border rounded">
+                <h5 class="fw-bold text-dark">View Tutor Sessions</h5>
+                <a href="{% url 'tutor_sessions' %}" class="btn btn-outline-primary btn-sm">View Sessions</a>
             </div>
         </div>
     </div>
