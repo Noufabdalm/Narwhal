@@ -2,10 +2,9 @@
  * Alerts
  */
 
-.alert {
+ .alert {
   border-radius: 0px;
 }
-
 
 /*
  * Cover page
@@ -20,9 +19,9 @@
   height: 100vh;
 }
 
-.vcenter-item{
-    display: flex;
-    align-items: center;
+.vcenter-item {
+  display: flex;
+  align-items: center;
 }
 
 /*
@@ -46,13 +45,13 @@ p.cover-text {
   padding-bottom: 30px;
   border-radius: 15%;
 }
+
 .cover-card-block {
-  opacity: 1
+  opacity: 1;
 }
 
-
 /*
- * forms
+ * Forms
  */
 .nolabel label {
   display: none;
@@ -83,13 +82,13 @@ ul.errorlist {
  */
 .profile-image {
   width: 120px;
-  clear:both;
-  float:left;
+  clear: both;
+  float: left;
 }
 
 .profile-text {
-  overflow:hidden;
-  padding-left:20px
+  overflow: hidden;
+  padding-left: 20px;
 }
 
 h3.profile-title {
@@ -102,7 +101,6 @@ h3.profile-title {
   font-style: italic;
 }
 
-
 /*
  * Hyperlinks
  */
@@ -110,7 +108,170 @@ h3.profile-title {
   text-decoration: none;
   color: #0d6efd;
 }
+
 .content a:hover {
   text-decoration: underline;
   color: #0d6efd;
 }
+
+/*
+ * Dashboard Styling
+ */
+
+/* General Layout */
+.container {
+  margin-top: 20px;
+}
+
+.text-center {
+  text-align: center;
+}
+
+h1,
+h5 {
+  font-family: Arial, sans-serif;
+  font-weight: bold;
+}
+
+h6 {
+  font-size: 16px;
+  color: #6c757d;
+  margin-bottom: 10px;
+}
+
+/* Cards */
+.bg-light {
+
+
+  background-color: #f8f9fa !important;
+}
+
+.border {
+  border: 1px solid #dee2e6;
+}
+
+.rounded {
+  border-radius: 8px !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.p-4 {
+  padding: 1.5rem !important;
+}
+
+.low-key {
+  color: #6c757d;
+  font-size: 14px;
+}
+
+ul {
+  padding-left: 20px;
+  list-style-type: disc;
+}
+
+ul li {
+  margin-bottom: 8px;
+}
+
+/* Buttons */
+.btn {
+  border-radius: 4px;
+  padding: 8px 16px;
+  text-transform: capitalize;
+}
+
+.btn-outline-secondary {
+  color: #6c757d;
+  border-color: #6c757d;
+  background-color: transparent;
+}
+
+.btn-outline-secondary:hover {
+  background-color: #6c757d;
+  color: #fff;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .p-4 {
+    padding: 1rem !important;
+  }
+
+  h1 {
+    font-size: 3rem;
+  }
+
+  h5 {
+    font-size: 1.2rem;
+  }
+
+  ul {
+    padding-left: 15px;
+  }
+}
+
+/* Card Styling */
+.card {
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 30px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+}
+
+/* Cover Heading */
+.cover-heading {
+  font-family: 'Arial', sans-serif;
+  font-weight: bold;
+  font-size: 2.5rem;
+  color: #0d6efd;
+}
+
+/* Cover Text */
+.cover-text {
+  font-size: 1.1rem;
+  color: #6c757d;
+  text-align: justify !important; 
+}
+
+/* Buttons */
+.btn-lg {
+  font-size: 1.2rem;
+  padding: 12px 20px;
+  border-radius: 50px;
+}
+
+.btn-primary {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
+.btn-outline-secondary {
+  border-color: #6c757d;
+  color: #6c757d;
+}
+
+.btn-outline-secondary:hover {
+  background-color: #6c757d;
+  color: #fff;
+}
+
+/* Center Content */
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.d-grid {
+  display: grid;
+  gap: 15px;
+}
+
