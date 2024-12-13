@@ -54,7 +54,6 @@ urlpatterns = [
     path('manage-lesson-requests/', views.manage_lesson_requests, name='manage_lesson_requests'),
     path('admin_dashboard/allocated_lessons/', views.allocated_lessons_view, name='allocated_lessons'),
     path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
-    path('tutor/sessions/add/', views.TutorSessionCreateView.as_view(), name='tutor_session_add'),
     path('tutor/dashboard/', views.tutor_dashboard, name='tutor_dashboard'),   
     path('request_cancellation/', views.CancellationRequestView, name='cancellation_request'),
     path('manage_cancellation_requests/', views.manage_cancellation_requests, name='manage_cancellation_requests'),
@@ -64,7 +63,7 @@ urlpatterns = [
     path('payment-history/', views.student_payment_history_view, name='student_payment_history'),
     path('admin-invoices/', views.admin_invoice_view, name='admin_invoice_view'),
     path('student_dashboard/', views.student_dashboard, name='student_dashboard'),
-    path('tutor_dashboard/', views.tutor_dashboard, name='tutor_dashboard'),
+    path('tutor/sessions/', views.tutor_sessions_page, name='tutor_sessions'),
     path('admin_tutor_sessions/', views.tutor_sessions_view, name='admin_tutor_sessions')
 ]
 

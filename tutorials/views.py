@@ -1141,7 +1141,7 @@ def manage_cancellation_requests(request):
 
 
 
-def tutor_sessions_view(request):
+def tutor_sessions_page(request):
     """Tutor can check all the added Tutor Sessions."""
     try:
         tutor = request.user.tutor_profile 
