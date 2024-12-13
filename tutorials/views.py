@@ -66,7 +66,7 @@ def student_courses_view(request):
         student = request.user.student_profile
     except AttributeError:
         messages.error(request, "You are not authorized to view this page.")
-        return redirect('dashboard')
+        return redirect('log_in')
 
     lessons = Lesson.objects.filter(student=student)
 
@@ -91,7 +91,7 @@ def student_lesson_schedule_view(request):
         student = request.user.student_profile
     except AttributeError:
         messages.error(request, "You are not authorized to view this page.")
-        return redirect('dashboard')
+        return redirect('log_in')
 
     lessons = Lesson.objects.filter(student=student).order_by('session__time', 'session__start_date')
 
@@ -119,7 +119,7 @@ def tutor_schedule_view(request):
         tutor = request.user.tutor_profile
     except AttributeError:
         messages.error(request, "You are not authorized to view this page.")
-        return redirect('dashboard')
+        return redirect('log_in')
 
     lessons = Lesson.objects.filter(tutor=tutor).order_by('session__start_date', 'session__time')
 
@@ -212,29 +212,28 @@ def home(request):
 
 class LoginProhibitedMixin:
     """Mixin that redirects when a user is logged in."""
-
     redirect_when_logged_in_url = None
 
     def dispatch(self, *args, **kwargs):
         """Redirect when logged in, or dispatch as normal otherwise."""
         if self.request.user.is_authenticated:
-            return self.handle_already_logged_in(*args, **kwargs)
+            redirect_url = self.get_redirect_when_logged_in_url()
+            # Avoid redirecting to the same path
+            if self.request.path != redirect_url:
+                return redirect(redirect_url)
         return super().dispatch(*args, **kwargs)
 
-    def handle_already_logged_in(self, *args, **kwargs):
-        url = self.get_redirect_when_logged_in_url()
-        return redirect(url)
-
     def get_redirect_when_logged_in_url(self):
-        """Returns the url to redirect to when not logged in."""
+        """Returns the URL to redirect to when logged in."""
         if self.redirect_when_logged_in_url is None:
             raise ImproperlyConfigured(
                 "LoginProhibitedMixin requires either a value for "
                 "'redirect_when_logged_in_url', or an implementation for "
                 "'get_redirect_when_logged_in_url()'."
             )
-        else:
-            return self.redirect_when_logged_in_url
+        return self.redirect_when_logged_in_url
+
+
         
 
 class AdminRequiredMixin:
@@ -243,7 +242,7 @@ class AdminRequiredMixin:
             Admin.objects.get(user=request.user)
         except Admin.DoesNotExist:
             messages.error(request, "You must be an admin to access this page.")
-            return redirect('dashboard')  # Redirect to a suitable page
+            return redirect('log_in')  # Redirect to a suitable page
         return super().dispatch(request, *args, **kwargs)
 
 
@@ -319,7 +318,7 @@ class PasswordView(LoginRequiredMixin, FormView):
         """Redirect the user after successful password change."""
 
         messages.add_message(self.request, messages.SUCCESS, "Password updated!")
-        return reverse('dashboard')
+        return reverse('home')
 
 
 class ProfileUpdateView(LoginRequiredMixin, UpdateView):
@@ -341,11 +340,10 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
 
 
 class SignUpView(LoginProhibitedMixin, FormView):
-    """Display the sign up screen and handle sign ups."""
-
+    """Display the sign-up screen and handle sign-ups."""
     form_class = SignUpForm
     template_name = "sign_up.html"
-    redirect_when_logged_in_url = settings.REDIRECT_URL_WHEN_LOGGED_IN
+    redirect_when_logged_in_url = 'student_dashboard'  # Redirect students
 
     def form_valid(self, form):
         self.object = form.save()
@@ -353,28 +351,35 @@ class SignUpView(LoginProhibitedMixin, FormView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
+        return reverse('student_dashboard')
+
     
 class TutorSignUpView(LoginProhibitedMixin, FormView):
-    """Display the sign up screen and handle tutor sign ups."""
-
+    """Display the sign-up screen and handle tutor sign-ups."""
     form_class = TutorSignUpForm
     template_name = "tutor_sign_up.html"
-    redirect_when_logged_in_url = settings.REDIRECT_URL_WHEN_LOGGED_IN
+    redirect_when_logged_in_url = 'tutor_dashboard'  # Redirect tutors
 
     def form_valid(self, form):
-        self.object = form.save()
-        login(self.request, self.object)
-        return super().form_valid(form)
+        try:
+            self.object = form.save()
+            login(self.request, self.object)
+            return super().form_valid(form)
+        except Exception as e:
+            print("Error during form submission:", e)  # For debugging
+            form.add_error(None, "An unexpected error occurred.")
+            return self.form_invalid(form)
+
 
     def get_success_url(self):
-        return reverse(settings.REDIRECT_URL_WHEN_LOGGED_IN)
+        return reverse('tutor_dashboard')
+
 
 
 class LessonRequestView(LoginRequiredMixin, FormView): 
     form_class = LessonRequestForm  
     template_name = "lesson_requests.html"
-    success_url = '/dashboard/'
+    success_url = 'student_dashboard'
 
     def post(self, request, *args, **kwargs):
         form = self.form_class(request.POST)
@@ -431,7 +436,7 @@ def allocated_lessons_view(request):
         admin = Admin.objects.get(user=request.user)
     except Admin.DoesNotExist:
         messages.error(request, "You must be an admin to access this page.")
-        return redirect('dashboard')
+        return redirect('log_in')
     
     # Get filter values from GET parameters
     term_filter = request.GET.get('term')
@@ -493,16 +498,19 @@ def allocated_lessons_view(request):
 
         })
 
-
-
 def tutor_sessions_view(request):
-    """Admin view to display all allocated lessons."""
+    """Admin view to display all tutor sessions."""
+
+    if not request.user.is_authenticated:
+        messages.error(request, "You must log in to access this page.")
+        return redirect('home')
+    
     try:
         # Ensure the logged-in user is an admin
         admin = Admin.objects.get(user=request.user)
     except Admin.DoesNotExist:
         messages.error(request, "You must be an admin to access this page.")
-        return redirect('dashboard')
+        return redirect('home')
 
     # Get filter values from GET parameters
     term_filter = request.GET.get('term')
@@ -511,7 +519,7 @@ def tutor_sessions_view(request):
     booked_filter = request.GET.get('booked')
     duration_filter = request.GET.get('duration')
 
-    tutor_sessions = TutorSession.objects.all()
+    tutor_sessions = TutorSession.objects.all().order_by("id")  # Ensure queryset is ordered
 
     # Apply filters
     if term_filter:
@@ -520,12 +528,12 @@ def tutor_sessions_view(request):
         tutor_sessions = tutor_sessions.filter(tutor__id=tutor_filter)
     if frequency_filter:
         tutor_sessions = tutor_sessions.filter(frequency=frequency_filter)
-    if booked_filter in ['true', 'false']:
-        tutor_sessions = tutor_sessions.filter(is_booked=(booked_filter == 'true'))
+    if booked_filter in ["true", "false"]:
+        tutor_sessions = tutor_sessions.filter(is_booked=(booked_filter == "true"))
     if duration_filter:
         tutor_sessions = tutor_sessions.filter(duration_minutes=duration_filter)
 
-    # Set 10 sessions per page
+    # Pagination
     paginator = Paginator(tutor_sessions, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -536,14 +544,24 @@ def tutor_sessions_view(request):
     frequencies = TutorSession.FREQUENCY_CHOICES
     durations = TutorSession.DURATION_CHOICES
 
+    current_filters = {
+        "term": term_filter,
+        "tutor": tutor_filter,
+        "frequency": frequency_filter,
+        "booked": booked_filter,
+        "duration": duration_filter,
+    }
+
     return render(request, 'admin_tutor_sessions.html', {
-        'page_obj': page_obj,
-        'tutor_sessions': page_obj.object_list,
-        'terms': terms,
-        'tutors': tutors,
-        'frequencies': frequencies,
-        'durations': durations
+        "page_obj": page_obj,
+        "tutor_sessions": page_obj.object_list,
+        "terms": terms,
+        "tutors": tutors,
+        "frequencies": frequencies,
+        "durations": durations,
+        "current_filters": current_filters,
     })
+
 
 
 @login_required
@@ -553,7 +571,7 @@ def student_lesson_requests(request):
         student = request.user.student_profile
     except AttributeError:
         messages.error(request, 'You must be a student to view this page.')
-        return redirect('dashboard') 
+        return redirect('home') 
 
     
     sort_by = request.GET.get('sort', 'requested_date')  # Default sort by requested_date
@@ -588,7 +606,7 @@ def manage_lesson_requests(request):
         admin = Admin.objects.get(user=request.user)
     except Admin.DoesNotExist:
         messages.error(request, "You must be an admin to access this page.")
-        return redirect('dashboard')
+        return redirect('home')
 
     # Get filter values from GET parameters
     term_filter = request.GET.get('term')
@@ -856,7 +874,7 @@ def admin_dashboard(request):
         context = {
             'pending_requests': LessonRequest.objects.filter(status='pending').count(),
             'total_lessons': Lesson.objects.count(),
-            'unpaid_invoices': Invoice.objects.filter(status='unpaid').count(),
+            'unpaid_invoices': Invoice.objects.count(),
             'total_students': Student.objects.count(),
             'total_tutors': Tutor.objects.count(),
             'total_courses': Course.objects.count(),
@@ -1063,16 +1081,21 @@ def CancellationRequestView(request):
     if request.method == 'POST':
         form = CancellationRequestForm(request.POST, user=request.user)  # Pass the user to the form
         if form.is_valid():
-
             cancellation_request = form.save(commit=False)
             # Assign the logged-in user to the `user` field
             cancellation_request.user = request.user
             
             cancellation_request.save()
             messages.success(request, "Your cancellation request has been submitted.")
-            return redirect('dashboard')  # Redirect to the dashboard or another page
+            
+            # Redirect based on the user's profile type
+            if hasattr(request.user, 'student_profile'):
+                return redirect('student_dashboard')
+            elif hasattr(request.user, 'tutor_profile'):
+                return redirect('tutor_dashboard')
     else:
         form = CancellationRequestForm(user=request.user)  # Pass the user to the form
+    
     return render(request, 'cancellation_request.html', {'form': form})
 
 @login_required
@@ -1082,7 +1105,7 @@ def manage_cancellation_requests(request):
         admin = Admin.objects.get(user=request.user)
     except Admin.DoesNotExist:
         messages.error(request, "You must be an admin to access this page.")
-        return redirect('dashboard')
+        return redirect('log_in')
 
     # Base queryset
     cancellation_requests = CancellationRequest.objects.select_related(
@@ -1115,6 +1138,7 @@ def manage_cancellation_requests(request):
         if action == 'accept':
             lesson = Lesson.objects.select_related('session').get(id=cancellation_request.lesson.id)
             lesson.rollover = False
+            lesson.save()
             cancellation_request.status = 'approved'
             cancellation_request.save()
 
@@ -1145,7 +1169,7 @@ def tutor_sessions_page(request):
         tutor = request.user.tutor_profile 
     except AttributeError:
         messages.error(request, 'Only tutors can access this page.')
-        return redirect('dashboard')
+        return redirect('home')
 
     sessions = TutorSession.objects.filter(tutor=tutor).order_by('start_date', 'time')
     paginator = Paginator(sessions, 10)  

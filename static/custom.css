@@ -28,6 +28,7 @@
  * Cover page
  */
 h1.cover-heading {
+  
   font-size: 4rem;
 }
 
@@ -273,3 +274,4 @@ ul li {
   display: grid;
   gap: 15px;
 }
+

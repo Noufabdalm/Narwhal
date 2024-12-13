@@ -246,14 +246,13 @@ class TutorSession(models.Model):
         return total_cost
     
     def calculate_end_time(self):
-        """Helper method to calculate the end time of the session.
-            To use it to avoid overlapping sessions
-         """
-        start_time = self.time if isinstance(self.time, time) else datetime.strptime(str(self.time), "%H:%M:%S").time()
+        """Helper method to calculate the end time of the session."""
+        start_time = datetime.datetime.strptime(str(self.time), "%H:%M:%S").time()
         duration_delta = timedelta(minutes=self.duration_minutes)
         start_datetime = datetime.datetime.combine(datetime.date.today(), start_time)
         end_datetime = start_datetime + duration_delta
         return end_datetime.time()
+
 
     def clean(self):
         if self.pk:  
@@ -285,9 +284,11 @@ class TutorSession(models.Model):
             tutor=self.tutor,
             term=self.term,
             start_day=self.start_day,
+            frequency = self.frequency
         ).exclude(pk=self.pk).filter(
             time__lt=end_time,  
-            time__gte=self.time  
+            time__gte=self.time,
+            frequency=self.frequency
         )
 
         if overlapping_sessions.exists():
@@ -368,8 +369,6 @@ class LessonRequest(models.Model):
 
 class Lesson(models.Model):
     """Model for Booking lessons."""
-    STATUS_CHOICES = { ('active', 'Active'),
-            ('cancelled', 'Cancelled')}
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='lessons')
     tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='lessons')
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lessons')
