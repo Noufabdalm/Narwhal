@@ -1,17 +1,63 @@
-{% extends 'base_content.html' %}
+{% extends "base_content.html" %}
+
+{% block title %}
+Tutor Dashboard
+{% endblock %}
+
 {% block content %}
-<div class="container">
-    <h1>Welcome to your dashboard {{ user.username }}</h1>
-  <p>Here are your current sessions:</p>
-  
-  <ul>
-    {% for session in sessions %}
-      <li>{{ session.term.name }} on {{ session.start_date }} ({{ session.duration_minutes }} minutes)</li>
-    {% endfor %}
-  </ul>
+<div class="container mt-4">
+    <h1 class="text-center mb-4">Tutor Dashboard</h1>
 
-  <a href="{% url 'tutor_session_add' %}" class="btn btn-primary">Add a New Tutor Session</a>
-  <a href="{% url 'tutor_sessions' %}" class="btn btn-secondary">View All Sessions</a>
+    <!-- Schedule Section -->
+    <h6 class="text-muted mb-2">Schedule</h6>
+    <div class="row g-3">
+        <!-- Upcoming Lessons -->
+        <div class="col-md-6">
+            <div class="p-4 bg-light border rounded">
+                <h5 class="fw-bold text-dark">Upcoming Lessons</h5>
+                <ul class="low-key">
+                    {% for lesson in upcoming_lessons %}
+                        <li>
+                            <strong>{{ lesson.course.name }}</strong> with {{ lesson.student.user.full_name }} on {{ lesson.start_date }} at {{ lesson.session.time }}
+                        </li>
+                    {% empty %}
+                        <p>No upcoming lessons.</p>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <!-- Assigned Students -->
+        <div class="col-md-6">
+            <div class="p-4 bg-light border rounded">
+                <h5 class="fw-bold text-dark">Assigned Students</h5>
+                <ul class="low-key">
+                    {% for student in assigned_students %}
+                        <li>{{ student.user.full_name }}</li>
+                    {% empty %}
+                        <p>No students assigned.</p>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
 
+    <!-- Tutor Sessions -->
+    <h6 class="text-muted mt-4 mb-2">Manage Sessions</h6>
+    <div class="row g-3">
+        <!-- Manage Sessions -->
+        <div class="col-md-6">
+            <div class="p-4 bg-light border rounded">
+                <h5 class="fw-bold text-dark">Tutor Sessions</h5>
+                <a href="{% url 'tutor_schedule' %}" class="btn btn-outline-secondary btn-sm">View and Add Availability</a>
+            </div>
+        </div>
+        <!-- Cancel Session Request -->
+        <div class="col-md-6">
+            <div class="p-4 bg-light border rounded">
+                <h5 class="fw-bold text-dark">Cancel Lesson Request</h5>
+                <a href="{% url 'cancellation_request' %}" class="btn btn-outline-danger btn-sm">Cancel Lesson Request</a>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

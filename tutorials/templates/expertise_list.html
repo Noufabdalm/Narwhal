@@ -1,8 +1,10 @@
 {% extends 'base_content.html' %}
 {% block content %}
 <div class="container mt-4">
-    <h1>Expertise List</h1>
-
+    <h1 class="d-flex justify-content-between align-items-center">
+        Expertise List
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-primary">Back to Dashboard</a>
+      </h1>
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
         <form method="get" class="d-flex gap-2 flex-grow-1">
             <input type="text" name="search" placeholder="Search by expertise name" value="{{ request.GET.search }}" class="form-control form-control-sm">

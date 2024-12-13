@@ -2,20 +2,23 @@
 
 {% block content %}
   <div class="container mt-5">
-    <h2 class="mb-4">My Lesson Requests</h2>
+    <h1 class="d-flex justify-content-between align-items-center">
+      Allocated Lessons
+      <a href="{% url 'admin_dashboard' %}" class="btn btn-primary">Back to Dashboard</a>
+    </h1>
 
-    <!-- Sort Options -->
-    <div class="mb-4">
-      <form method="get" id="sort-form">
-        <label for="sort">Sort By:</label>
-        <select name="sort" id="sort" class="form-control" onchange="document.getElementById('sort-form').submit()">
-          <option value="requested_date" {% if request.GET.sort == "requested_date" %}selected{% endif %}>Requested Date (Oldest)</option>
-          <option value="requested_date_desc" {% if request.GET.sort == "requested_date_desc" %}selected{% endif %}>Requested Date (Newest)</option>
-          <option value="term" {% if request.GET.sort == "term" %}selected{% endif %}>Term Start Date</option>
-          <option value="status" {% if request.GET.sort == "status" %}selected{% endif %}>Status</option>
-        </select>
-      </form>
-    </div>
+       <!-- Sort Options -->
+       <div class="mb-4">
+        <form method="get" id="sort-form">
+          <label for="sort">Sort By:</label>
+          <select name="sort" id="sort" class="form-control" onchange="document.getElementById('sort-form').submit()">
+            <option value="requested_date" {% if request.GET.sort == "requested_date" %}selected{% endif %}>Requested Date (Oldest)</option>
+            <option value="requested_date_desc" {% if request.GET.sort == "requested_date_desc" %}selected{% endif %}>Requested Date (Newest)</option>
+            <option value="term" {% if request.GET.sort == "term" %}selected{% endif %}>Term Start Date (Earliest)</option>
+            <option value="term_desc" {% if request.GET.sort == "term_desc" %}selected{% endif %}>Term Start Date (Latest)</option>
+          </select>
+        </form>
+      </div>
 
     {% if lesson_requests %}
       <table class="table table-striped table-bordered">

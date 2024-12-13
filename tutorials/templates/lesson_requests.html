@@ -1,7 +1,12 @@
 {% extends "base_content.html" %}
 
 {% block content %}
-  <h2>Request a Lesson</h2>
+
+  <h1 class="d-flex justify-content-between align-items-center">
+    Request New Lesson
+    <a href="{% url 'student_dashboard' %}" class="btn btn-primary">Back to Dashboard</a>
+  </h1>
+
   <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
