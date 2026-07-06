@@ -1,5 +1,10 @@
 # Team Narwhal Small Group project
 
+A collaborative Django-based task management web 
+application, built as part of a software engineering 
+group project. The app supports task creation, 
+assignment and tracking with a deployed live version.
+
 ## Team members
 The members of the team are:
 - Nouf Almutairi
